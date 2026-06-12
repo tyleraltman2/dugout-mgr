@@ -325,6 +325,9 @@ select:focus{border-color:var(--gold);}
     <button class="btn btn-primary" onclick="endGame()" style="background:var(--red-bg);color:var(--red);border:1px solid #5a2a2a;">
       &#127937; END GAME &amp; SAVE
     </button>
+    <button class="btn btn-ghost" onclick="discardGame()" style="width:100%;justify-content:center;padding:11px;margin-top:8px;border:1px solid var(--gray-dark);color:var(--gray);font-size:13px;">
+      &#x2715; Discard Game
+    </button>
   </div>
 </div>
 
@@ -920,6 +923,25 @@ function endGame() {
   try {
     const stored = JSON.parse(localStorage.getItem('dugout_v3') || '{}');
     } catch(e) { console.log('[endGame] localStorage read error:', e); }
+  renderAll();
+}
+
+function discardGame() {
+  const isTournament = state.gameType === 'pg' || state.gameType === 'tl';
+  const tournWarning = isTournament ? ' This is a tournament game — pitch counts will NOT be added to tournament totals.' : '';
+  const msg = 'Discard this game? All progress will be lost and nothing will be saved to history.' + tournWarning;
+  if (!confirm(msg)) return;
+
+  // For tournament games, activeTournament is untouched — no game record was pushed
+  // since that only happens in endGame(). Nothing to roll back.
+  state.gameActive = false;
+  state.innings = Array(TOTAL_INNINGS).fill(null).map(() => ({}));
+  state.atBats = {};
+  state.pitches = {};
+  state.currentInning = 1;
+  state.battingOrder = [];
+  state.currentTournMeta = null;
+  save();
   renderAll();
 }
 
