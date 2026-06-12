@@ -378,6 +378,10 @@ select:focus{border-color:var(--gold);}
 <div id="tab-roster" class="page">
   <div class="card">
     <div class="card-header">MY ROSTER <span id="rosterCount" style="font-size:11px;color:var(--gray);"></span></div>
+    <div style="padding:7px 14px 6px;display:flex;align-items:center;gap:6px;border-bottom:1px solid var(--navy-light);background:#0d1e35;">
+      <span style="font-size:13px;">&#9432;</span>
+      <span style="font-size:11px;color:var(--gray);">Drag <span style="color:var(--white);">&#8801;</span> to reorder &mdash; roster order sets the default batting order for new games</span>
+    </div>
     <div id="rosterList"></div>
     <div class="add-player-form">
       <input type="text" id="newPlayerName" placeholder="Player name" style="flex:2;">
@@ -1863,9 +1867,9 @@ function renderRoster() {
     'ontouchstart="rosterTouchStart(event)" ontouchmove="rosterTouchMove(event)" ontouchend="rosterTouchEnd(event)" ' +
     'style="touch-action:none;padding:0 8px 0 2px;cursor:grab;">' +
     '<span class="drag-handle">&#8801;</span></div>' +
-    '<div style="flex:1;">' +
+    '<div style="flex:1;display:flex;align-items:center;gap:8px;">' +
+    (p.number ? '<div style="font-family:var(--font-display);font-size:15px;font-weight:700;color:var(--gold);min-width:28px;text-align:center;">#' + p.number + '</div>' : '<div style="min-width:28px;"></div>') +
     '<div class="roster-player-name">' + p.name + '</div>' +
-    (p.number ? '<div class="roster-player-num">#' + p.number + '</div>' : '') +
     '</div>' +
     '<button class="btn btn-danger btn-sm" onclick="removePlayer(\'' + p.id + '\')">&#x2715;</button>' +
     '</div>'
