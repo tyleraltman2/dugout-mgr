@@ -1790,6 +1790,10 @@ function removePlayer(id) {
   state.battingOrder = (state.battingOrder || []).filter(bid => bid !== id);
   save(); renderRoster();
 }
+function updatePlayerNumber(id, val) {
+  const p = state.roster.find(p => p.id === id);
+  if (p) { p.number = val.trim(); save(); }
+}
 function reorderRoster(from, to) {
   const moved = state.roster.splice(from, 1)[0];
   state.roster.splice(to, 0, moved);
@@ -1868,7 +1872,9 @@ function renderRoster() {
     'style="touch-action:none;padding:0 8px 0 2px;cursor:grab;">' +
     '<span class="drag-handle">&#8801;</span></div>' +
     '<div style="flex:1;display:flex;align-items:center;gap:8px;">' +
-    (p.number ? '<div style="font-family:var(--font-display);font-size:15px;font-weight:700;color:var(--gold);min-width:28px;text-align:center;">#' + p.number + '</div>' : '<div style="min-width:28px;"></div>') +
+    '<input type="number" value="' + (p.number || '') + '" placeholder="#" ' +
+    'onchange="updatePlayerNumber(\'' + p.id + '\', this.value)" ' +
+    'style="width:44px;background:var(--navy-light);border:1px solid var(--gray-dark);border-radius:6px;color:var(--gold);font-family:var(--font-display);font-size:14px;font-weight:700;text-align:center;padding:4px 2px;-moz-appearance:textfield;">' +
     '<div class="roster-player-name">' + p.name + '</div>' +
     '</div>' +
     '<button class="btn btn-danger btn-sm" onclick="removePlayer(\'' + p.id + '\')">&#x2715;</button>' +
