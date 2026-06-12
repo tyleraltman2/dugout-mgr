@@ -1,0 +1,2019 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Salt DugoutMgr</title>
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=Source+Sans+3:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+<script>
+  const firebaseConfig = {
+    apiKey: "AIzaSyAymWIRMPMgnns3Jmhxmz5gWg-XHZC5Cvo",
+    authDomain: "salty-lineup-manager.firebaseapp.com",
+    projectId: "salty-lineup-manager",
+    storageBucket: "salty-lineup-manager.firebasestorage.app",
+    messagingSenderId: "455436698353",
+    appId: "1:455436698353:web:1a8932d9af165602845f50"
+  };
+  const TEAM_ID = "team-001";
+  try {
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+    window._fbReady = true;
+    window.fbSave = async function(s) { try { await db.collection("teams").doc(TEAM_ID).set(s); } catch(e) { console.error(e); } };
+    window.fbFetch = async function(cb) { try { const s = await db.collection("teams").doc(TEAM_ID).get(); if(s.exists) cb(s.data()); } catch(e) {} };
+    window.fbListen = function(cb) {
+      db.collection("teams").doc(TEAM_ID).onSnapshot(s => { if(s.exists) cb(s.data()); }, e => console.error(e));
+      setInterval(async () => { try { const s = await db.collection("teams").doc(TEAM_ID).get(); if(s.exists) cb(s.data()); } catch(e) {} }, 4000);
+    };
+  } catch(e) { window._fbReady = false; }
+  window.dispatchEvent(new Event('firebase-ready'));
+</script>
+<style>
+:root {
+  --navy:#0a1628; --navy-mid:#112240; --navy-light:#1a3a5c;
+  --gold:#f5c842; --gold-dim:#c49e20; --red:#e63946; --red-bg:#3a1a1a;
+  --green:#2ecc71; --green-bg:#0a2a1a; --amber:#f39c12;
+  --white:#f0f4f8; --gray:#8899aa; --gray-dark:#334455;
+  --blue:#4488ff; --blue-bg:#0a1a3a; --purple:#aa88ff; --purple-bg:#1a0a3a;
+  --font-display:'Oswald',sans-serif; --font-body:'Source Sans 3',sans-serif; --radius:10px;
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+body{background:var(--navy);color:var(--white);font-family:var(--font-body);min-height:100vh;max-width:480px;margin:0 auto;overflow-x:hidden;}
+.app-header{background:var(--navy-mid);border-bottom:3px solid var(--gold);padding:10px 16px 8px;position:sticky;top:0;z-index:100;display:flex;align-items:center;justify-content:space-between;}
+.app-logo{font-family:var(--font-display);font-size:20px;font-weight:700;color:var(--gold);letter-spacing:1px;}
+.app-logo span{color:var(--white);font-weight:400;}
+.header-right{display:flex;align-items:center;gap:8px;}
+.game-badge{font-family:var(--font-display);font-size:10px;font-weight:600;padding:3px 8px;border-radius:20px;letter-spacing:1px;text-transform:uppercase;}
+.game-badge.regular{background:var(--navy-light);color:var(--gold);border:1px solid var(--gold-dim);}
+.game-badge.cup{background:#3a0a0a;color:#ff6b6b;border:1px solid var(--red);}
+.game-badge.pg{background:var(--blue-bg);color:var(--blue);border:1px solid #2255aa;}
+.game-badge.tl{background:var(--purple-bg);color:var(--purple);border:1px solid #5533aa;}
+.game-badge.none{background:var(--gray-dark);color:var(--gray);border:1px solid var(--gray-dark);}
+.sync-dot{width:8px;height:8px;border-radius:50%;background:var(--gray);transition:background 0.3s;}
+.sync-dot.live{background:var(--green);box-shadow:0 0 6px var(--green);}
+.sync-dot.local{background:var(--amber);}
+.tabs{display:flex;background:var(--navy-mid);border-bottom:2px solid var(--navy-light);position:sticky;top:53px;z-index:99;}
+.tab{flex:1;padding:8px 2px;text-align:center;font-family:var(--font-display);font-size:11px;font-weight:600;color:var(--gray);border:none;background:none;cursor:pointer;transition:all 0.15s;border-bottom:3px solid transparent;margin-bottom:-2px;}
+.tab.active{color:var(--gold);border-bottom-color:var(--gold);}
+.tab-icon{font-size:14px;display:block;margin-bottom:1px;}
+.page{display:none;padding:10px 10px 90px;}
+.page.active{display:block;}
+.card{background:var(--navy-mid);border-radius:var(--radius);border:1px solid var(--navy-light);margin-bottom:10px;overflow:hidden;}
+.card-header{padding:9px 14px;font-family:var(--font-display);font-size:12px;font-weight:600;letter-spacing:1px;color:var(--gold);text-transform:uppercase;border-bottom:1px solid var(--navy-light);display:flex;align-items:center;justify-content:space-between;}
+.btn{font-family:var(--font-display);font-weight:600;letter-spacing:0.5px;border:none;border-radius:8px;cursor:pointer;transition:all 0.15s;display:inline-flex;align-items:center;gap:6px;}
+.btn-primary{background:var(--gold);color:var(--navy);padding:12px 20px;font-size:15px;width:100%;justify-content:center;}
+.btn-primary:active{background:var(--gold-dim);transform:scale(0.98);}
+.btn-sm{padding:6px 12px;font-size:12px;}
+.btn-ghost{background:var(--navy-light);color:var(--white);}
+.btn-danger{background:var(--red-bg);color:var(--red);border:1px solid #5a2a2a;}
+.btn-success{background:var(--green-bg);color:var(--green);border:1px solid #1a5a3a;}
+.lineup-table{width:100%;border-collapse:collapse;}
+.lineup-table th{font-family:var(--font-display);font-size:11px;font-weight:600;color:var(--gold);letter-spacing:1px;text-transform:uppercase;padding:7px 6px;border-bottom:1px solid var(--navy-light);background:#0d1e35;text-align:center;}
+.lineup-table th.left{text-align:left;}
+.lineup-table td{padding:4px 5px;border-bottom:1px solid #0d1e35;vertical-align:middle;}
+.lineup-table tr:last-child td{border-bottom:none;}
+.player-row-green{background:rgba(46,204,113,0.06);}
+.player-row-red{background:rgba(230,57,70,0.07);}
+.drag-handle{color:var(--gray);font-size:16px;cursor:grab;padding:0 4px;user-select:none;touch-action:none;}
+.dragging{opacity:0.4;}
+.drag-over{border-top:2px solid var(--gold);}
+.player-name-cell{font-family:var(--font-display);font-size:13px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:95px;}
+.player-num-badge{color:var(--gold);font-size:10px;}
+.pos-btn{height:32px;min-width:44px;border-radius:6px;border:1px solid var(--navy-light);background:var(--navy-light);color:var(--gray);font-family:var(--font-display);font-size:11px;font-weight:700;cursor:pointer;transition:all 0.12s;display:flex;align-items:center;justify-content:center;width:100%;padding:0;}
+.pos-btn.sitting{background:var(--red-bg);color:var(--red);border-color:#5a2a2a;}
+.pos-btn.playing{background:var(--green-bg);color:var(--green);border-color:#1a5a3a;}
+.pos-btn.pitching{background:#1a1a3a;color:#9999ff;border-color:#3a3a7a;}
+.pos-btn.catching{background:#1a2a3a;color:#88ccff;border-color:#2a5a8a;}
+.innings-sat-cell{text-align:center;font-family:var(--font-display);font-size:13px;font-weight:700;}
+.innings-sat-cell.green{color:var(--green);}
+.innings-sat-cell.red{color:var(--red);}
+.ab-cell{display:flex;align-items:center;justify-content:center;gap:1px;}
+.ab-btn{width:20px;height:20px;border-radius:4px;border:none;background:var(--navy-light);color:var(--white);font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-weight:700;}
+.ab-count{font-family:var(--font-display);font-size:13px;font-weight:600;min-width:14px;text-align:center;}
+.inning-nav{display:flex;align-items:center;justify-content:space-between;padding:8px 12px;background:var(--navy-mid);border-radius:var(--radius);margin-bottom:10px;}
+.inning-nav-label{font-family:var(--font-display);font-size:18px;font-weight:700;color:var(--gold);}
+.nav-arrow{width:38px;height:38px;border-radius:8px;border:none;background:var(--navy-light);color:var(--white);font-size:20px;cursor:pointer;display:flex;align-items:center;justify-content:center;}
+.nav-arrow:disabled{opacity:0.3;cursor:default;}
+.nav-arrow:not(:disabled):active{background:var(--gray-dark);}
+.cup-status{display:flex;gap:6px;flex-wrap:wrap;padding:8px 10px;}
+.cup-pill{padding:4px 9px;border-radius:20px;font-family:var(--font-display);font-size:11px;font-weight:600;}
+.cup-pill.sat{background:var(--green-bg);color:var(--green);border:1px solid #1a5a1a;}
+.cup-pill.needs{background:#2a1a0a;color:var(--amber);border:1px solid #5a3a1a;}
+.setup-option{display:flex;align-items:center;justify-content:space-between;padding:10px 14px;border:2px solid var(--navy-light);border-radius:var(--radius);margin-bottom:6px;cursor:pointer;transition:all 0.15s;}
+.setup-option.selected{border-color:var(--gold);background:rgba(245,200,66,0.06);}
+.setup-option-label{font-family:var(--font-display);font-size:13px;font-weight:600;}
+.setup-option-desc{font-size:11px;color:var(--gray);margin-top:2px;}
+.setup-check{width:20px;height:20px;border-radius:50%;border:2px solid var(--gray-dark);display:flex;align-items:center;justify-content:center;font-size:12px;flex-shrink:0;}
+.setup-option.selected .setup-check{background:var(--gold);border-color:var(--gold);color:var(--navy);}
+.season-toggle{display:flex;border-radius:8px;overflow:hidden;border:1px solid var(--navy-light);}
+.season-btn{flex:1;padding:8px;font-family:var(--font-display);font-size:11px;font-weight:600;border:none;cursor:pointer;transition:all 0.15s;letter-spacing:0.5px;text-transform:uppercase;}
+.season-btn.active{background:var(--gold);color:var(--navy);}
+.season-btn:not(.active){background:var(--navy-light);color:var(--gray);}
+.roster-player-row{display:flex;align-items:center;gap:4px;padding:8px 10px 8px 6px;border-bottom:1px solid var(--navy-light);}
+.roster-player-row:last-child{border-bottom:none;}
+.roster-player-name{font-family:var(--font-display);font-size:14px;font-weight:500;}
+.roster-player-num{color:var(--gold);font-size:11px;}
+input[type="text"],input[type="number"]{background:var(--navy-light);border:1px solid var(--gray-dark);border-radius:8px;color:var(--white);font-family:var(--font-body);font-size:14px;padding:10px 12px;width:100%;outline:none;}
+input:focus{border-color:var(--gold);}
+select{background:var(--navy-light);border:1px solid var(--gray-dark);border-radius:8px;color:var(--white);font-family:var(--font-body);font-size:14px;padding:10px 12px;width:100%;outline:none;appearance:none;-webkit-appearance:none;}
+select:focus{border-color:var(--gold);}
+.add-player-form{display:flex;gap:8px;padding:10px;}
+.pitch-row{padding:10px 14px;border-bottom:1px solid var(--navy-light);}
+.pitch-row:last-child{border-bottom:none;}
+.pitch-row-top{display:flex;align-items:center;justify-content:space-between;}
+.pitch-name{font-family:var(--font-display);font-size:14px;font-weight:500;}
+.pitch-count-display{font-family:var(--font-display);font-size:26px;font-weight:700;cursor:pointer;border-bottom:2px dashed var(--gray-dark);transition:border-color 0.15s;padding-bottom:1px;line-height:1;}
+.pitch-count-display:hover{border-color:var(--gold);}
+.pitch-controls{display:flex;align-items:center;gap:6px;}
+.pitch-btn{width:34px;height:34px;border-radius:8px;border:none;font-size:18px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:opacity 0.1s;}
+.pitch-btn.minus{background:var(--red-bg);color:var(--red);}
+.pitch-btn.plus{background:var(--green-bg);color:var(--green);}
+.pitch-btn:active{opacity:0.6;}
+.pitch-limit-bar{height:5px;border-radius:3px;background:var(--navy-light);margin-top:6px;overflow:hidden;}
+.pitch-limit-bar.secondary{margin-top:3px;height:4px;}
+.pitch-limit-fill{height:100%;border-radius:3px;transition:width 0.3s,background 0.3s;}
+.pitch-meta{display:flex;gap:8px;margin-top:4px;align-items:center;flex-wrap:wrap;}
+.pitch-status{font-size:11px;font-family:var(--font-display);letter-spacing:0.5px;}
+.pitch-label{font-size:10px;font-family:var(--font-display);color:var(--gray);letter-spacing:0.5px;margin-top:4px;}
+.removed-badge{font-size:10px;font-family:var(--font-display);font-weight:600;padding:2px 7px;border-radius:10px;background:var(--red-bg);color:var(--red);border:1px solid #5a2a2a;}
+.pitch-input-modal{position:fixed;inset:0;background:rgba(0,0,0,0.8);z-index:300;display:flex;align-items:center;justify-content:center;}
+.pitch-input-modal.hidden{display:none;}
+.pitch-input-box{background:var(--navy-mid);border-radius:16px;border:2px solid var(--gold);padding:24px 20px;width:280px;text-align:center;}
+.pitch-input-title{font-family:var(--font-display);font-size:14px;color:var(--gold);margin-bottom:6px;letter-spacing:1px;}
+.pitch-number-input{font-family:var(--font-display);font-size:48px;font-weight:700;background:transparent;border:none;color:var(--white);text-align:center;width:100%;outline:none;}
+.pitch-input-actions{display:flex;gap:10px;margin-top:16px;}
+.history-game-card{background:var(--navy-mid);border-radius:var(--radius);border:1px solid var(--navy-light);margin-bottom:10px;overflow:hidden;}
+.history-game-header{padding:10px 14px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--navy-light);}
+.history-game-title{font-family:var(--font-display);font-size:14px;font-weight:600;}
+.history-stat-row{display:flex;justify-content:space-between;align-items:center;padding:7px 14px;border-bottom:1px solid var(--navy-light);font-size:13px;}
+.history-stat-row:last-child{border-bottom:none;}
+.history-stat-name{font-family:var(--font-display);font-size:13px;}
+.section-label{font-family:var(--font-display);font-size:11px;font-weight:600;color:var(--gray);letter-spacing:1.5px;text-transform:uppercase;padding:6px 2px 4px;}
+.empty-state{text-align:center;padding:40px 20px;color:var(--gray);}
+.empty-state-icon{font-size:38px;margin-bottom:10px;}
+.empty-state-text{font-family:var(--font-display);font-size:15px;}
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.8);z-index:200;display:flex;align-items:flex-end;justify-content:center;}
+.modal-overlay.hidden{display:none;}
+.modal-sheet{background:var(--navy-mid);border-radius:18px 18px 0 0;border-top:3px solid var(--gold);width:100%;max-width:480px;padding:14px 12px 28px;}
+.modal-title{font-family:var(--font-display);font-size:15px;font-weight:600;margin-bottom:12px;color:var(--gold);}
+.pos-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;}
+.pos-pick-btn{padding:13px 4px;border-radius:10px;border:2px solid var(--navy-light);background:var(--navy-light);color:var(--white);font-family:var(--font-display);font-size:14px;font-weight:600;cursor:pointer;text-align:center;transition:all 0.12s;}
+.pos-pick-btn:active{transform:scale(0.95);}
+.pos-pick-btn.sitting-pick{background:var(--red-bg);color:var(--red);border-color:#5a2a2a;}
+.pos-pick-btn.selected-pick{border-color:var(--gold);background:rgba(245,200,66,0.1);color:var(--gold);}
+.eligibility-badge{display:inline-block;font-family:var(--font-display);font-size:10px;font-weight:600;padding:3px 8px;border-radius:10px;letter-spacing:0.5px;}
+.elig-ok{background:var(--green-bg);color:var(--green);border:1px solid #1a5a1a;}
+.elig-warn{background:#2a1a0a;color:var(--amber);border:1px solid #5a3a1a;}
+.elig-no{background:var(--red-bg);color:var(--red);border:1px solid #5a2a2a;}
+.tourn-player-card{background:#0d1e35;border-radius:8px;padding:10px 12px;margin-bottom:8px;border:1px solid var(--navy-light);}
+.tourn-player-name{font-family:var(--font-display);font-size:14px;font-weight:600;margin-bottom:6px;}
+#copyPrevBtn .btn-ghost{border:1px solid var(--navy-light);color:var(--gray);font-size:13px;}
+.pg-options-box{background:#0a1a2a;border-radius:8px;padding:10px;margin-top:6px;border:1px solid #1a2a4a;}
+.tl-options-box{background:#1a0a2a;border-radius:8px;padding:10px;margin-top:6px;border:1px solid #2a1a4a;}
+</style>
+</head>
+<body>
+<div class="app-header">
+  <div class="app-logo">&#9918; SALT <span>DUGOUTMGR</span></div>
+  <div class="header-right">
+    <button onclick="manualSync()" style="background:none;border:none;cursor:pointer;display:flex;align-items:center;gap:5px;padding:2px 4px;" title="Tap to sync">
+      <div class="sync-dot" id="syncDot"></div>
+      <span id="syncLabel" style="font-size:9px;font-family:var(--font-display);color:var(--gray);letter-spacing:0.5px;"></span>
+    </button>
+    <div id="gameBadge" class="game-badge none">NO GAME</div>
+  </div>
+</div>
+<div class="tabs">
+  <button class="tab active" onclick="switchTab('lineup')"><span class="tab-icon">&#128203;</span>LINEUP</button>
+  <button class="tab" onclick="switchTab('pitching')"><span class="tab-icon">&#9918;</span>PITCH</button>
+  <button class="tab" onclick="switchTab('tournament')"><span class="tab-icon">&#127942;</span>TOURN</button>
+  <button class="tab" onclick="switchTab('roster')"><span class="tab-icon">&#128101;</span>ROSTER</button>
+  <button class="tab" onclick="switchTab('history')"><span class="tab-icon">&#128202;</span>HISTORY</button>
+</div>
+
+<!-- LINEUP TAB -->
+<div id="tab-lineup" class="page active">
+  <div id="noGameState">
+    <div class="empty-state">
+      <div class="empty-state-icon">&#127967;</div>
+      <div class="empty-state-text" style="color:var(--white);margin-bottom:4px;">Ready to play ball?</div>
+      <div style="font-size:12px;color:var(--gray);margin-bottom:16px;">Start a game to track your lineup</div>
+    </div>
+    <div class="card">
+      <div class="card-header">NEW GAME</div>
+      <div style="padding:12px;">
+        <div class="section-label" style="margin-bottom:6px;">Game Type</div>
+        <div class="setup-option selected" id="opt-regular" onclick="selectGameType('regular')">
+          <div><div class="setup-option-label">&#9918; Regular Game</div><div class="setup-option-desc">Standard rules · 6 innings · Track AB</div></div>
+          <div class="setup-check">&#10003;</div>
+        </div>
+        <div class="setup-option" id="opt-cup" onclick="selectGameType('cup')">
+          <div><div class="setup-option-label">&#127942; Cup Game</div><div class="setup-option-desc">Everyone sits once before anyone sits twice</div></div>
+          <div class="setup-check"></div>
+        </div>
+        <div class="setup-option" id="opt-pg" onclick="selectGameType('pg')">
+          <div><div class="setup-option-label">&#127919; Perfect Game</div><div class="setup-option-desc">10u · 75p/18 outs daily · Event pitch limit</div></div>
+          <div class="setup-check"></div>
+        </div>
+        <div class="setup-option" id="opt-tl" onclick="selectGameType('tl')">
+          <div><div class="setup-option-label">&#9889; Training Legends</div><div class="setup-option-desc">10u · Innings-based limits · 6 inn thru game 4</div></div>
+          <div class="setup-check"></div>
+        </div>
+
+        <div id="pgOptions" style="display:none;" class="pg-options-box">
+          <div class="section-label" style="color:var(--blue);margin-bottom:6px;">PERFECT GAME SETTINGS</div>
+          <div id="pgContinueBlock" style="display:none;margin-bottom:10px;">
+            <div style="background:rgba(68,136,255,0.08);border:1px solid #2255aa;border-radius:8px;padding:8px 10px;">
+              <div style="font-family:var(--font-display);font-size:11px;color:var(--blue);font-weight:600;margin-bottom:6px;">&#9654; IN-PROGRESS TOURNAMENT</div>
+              <div id="pgContinueName" style="font-family:var(--font-display);font-size:13px;color:var(--white);font-weight:500;margin-bottom:4px;"></div>
+              <div id="pgContinueMeta" style="font-size:11px;color:var(--gray);margin-bottom:8px;"></div>
+              <div style="display:flex;gap:6px;">
+                <button class="btn btn-sm" style="flex:1;justify-content:center;background:rgba(68,136,255,0.15);color:var(--blue);border:1px solid #2255aa;" onclick="pgSelectContinue()">&#10003; Continue This</button>
+                <button class="btn btn-sm" style="flex:1;justify-content:center;background:var(--navy-light);color:var(--gray);border:1px solid var(--gray-dark);" onclick="pgSelectNew()">+ New Tournament</button>
+              </div>
+            </div>
+          </div>
+          <div id="pgNewFields">
+            <div class="section-label" style="margin-bottom:4px;">Event Length</div>
+            <select id="pgEventLength">
+              <option value="2">2-Day Event (100p event max)</option>
+              <option value="3">3-Day Event (100p event max)</option>
+              <option value="4">4-Day Event (100p event max)</option>
+              <option value="5">5+ Day Event (140p event max)</option>
+            </select>
+            <div class="section-label" style="margin:8px 0 4px;">Tournament Name</div>
+            <input type="text" id="pgTournName" placeholder="e.g. PG Spring Classic">
+          </div>
+          <div class="section-label" style="margin:8px 0 4px;">Game # in Tournament</div>
+          <select id="pgGameNum"><option value="1">Game 1</option><option value="2">Game 2</option><option value="3">Game 3</option><option value="4">Game 4</option><option value="5">Game 5</option><option value="6">Game 6</option><option value="7">Game 7</option><option value="8">Game 8</option><option value="9">Game 9</option><option value="10">Game 10</option></select>
+          <div class="section-label" style="margin:8px 0 4px;">Day # in Tournament <span style="font-size:10px;color:var(--amber);">&#9888; affects pitcher rest</span></div>
+          <select id="pgDayNum"><option value="1">Day 1</option><option value="2">Day 2</option><option value="3">Day 3</option><option value="4">Day 4</option><option value="5">Day 5</option></select>
+          <div id="pgDayWarning" style="display:none;margin-top:6px;background:rgba(243,156,18,0.1);border:1px solid #5a3a1a;border-radius:6px;padding:7px 10px;font-size:11px;color:var(--amber);"></div>
+        </div>
+
+        <div id="tlOptions" style="display:none;" class="tl-options-box">
+          <div class="section-label" style="color:var(--purple);margin-bottom:6px;">TRAINING LEGENDS SETTINGS</div>
+          <div id="tlContinueBlock" style="display:none;margin-bottom:10px;">
+            <div style="background:rgba(170,136,255,0.08);border:1px solid #5533aa;border-radius:8px;padding:8px 10px;">
+              <div style="font-family:var(--font-display);font-size:11px;color:var(--purple);font-weight:600;margin-bottom:6px;">&#9654; IN-PROGRESS TOURNAMENT</div>
+              <div id="tlContinueName" style="font-family:var(--font-display);font-size:13px;color:var(--white);font-weight:500;margin-bottom:4px;"></div>
+              <div id="tlContinueMeta" style="font-size:11px;color:var(--gray);margin-bottom:8px;"></div>
+              <div style="display:flex;gap:6px;">
+                <button class="btn btn-sm" style="flex:1;justify-content:center;background:rgba(170,136,255,0.15);color:var(--purple);border:1px solid #5533aa;" onclick="tlSelectContinue()">&#10003; Continue This</button>
+                <button class="btn btn-sm" style="flex:1;justify-content:center;background:var(--navy-light);color:var(--gray);border:1px solid var(--gray-dark);" onclick="tlSelectNew()">+ New Tournament</button>
+              </div>
+            </div>
+          </div>
+          <div id="tlNewFields">
+            <div class="section-label" style="margin-bottom:4px;">Tournament Name</div>
+            <input type="text" id="tlTournName" placeholder="e.g. TL Summer Classic">
+          </div>
+          <div class="section-label" style="margin:8px 0 4px;">Game # in Tournament</div>
+          <select id="tlGameNum"><option value="1">Game 1</option><option value="2">Game 2</option><option value="3">Game 3</option><option value="4">Game 4</option><option value="5">Game 5</option><option value="6">Game 6</option><option value="7">Game 7</option><option value="8">Game 8</option><option value="9">Game 9</option><option value="10">Game 10</option></select>
+        </div>
+
+        <div id="seasonSection" style="margin-top:10px;display:none;">
+          <div class="section-label" style="margin-bottom:6px;">Season</div>
+          <div class="season-toggle">
+            <button class="season-btn active" id="btn-early" onclick="selectSeason('early')">Early (65p max)</button>
+            <button class="season-btn" id="btn-late" onclick="selectSeason('late')">Late (85p max)</button>
+          </div>
+        </div>
+        <div style="margin-top:10px;">
+          <div class="section-label" style="margin-bottom:5px;">Game Date</div>
+          <input type="text" id="gameDateInput" placeholder="e.g. June 14" style="margin-bottom:10px;">
+        </div>
+        <button class="btn btn-primary" onclick="startGame()">&#9918; START GAME</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="activeGameState" style="display:none;">
+    <div id="cupStatusCard" class="card" style="display:none;">
+      <div class="card-header">CUP GAME · SITTING TRACKER</div>
+      <div id="cupStatus" class="cup-status"></div>
+    </div>
+    <div class="inning-nav">
+      <button class="nav-arrow" id="prevInningBtn" onclick="changeInning(-1)">&#8249;</button>
+      <div style="text-align:center;">
+        <div class="inning-nav-label" id="inningLabel">INNING 1</div>
+        <div id="inningDots" style="display:flex;gap:5px;justify-content:center;margin:4px 0 2px;"></div>
+        <div style="font-size:11px;color:var(--gray);font-family:var(--font-display);">Tap pos · Drag &#8801; to reorder</div>
+      </div>
+      <button class="nav-arrow" id="nextInningBtn" onclick="changeInning(1)">&#8250;</button>
+    </div>
+    <div id="copyPrevBtn" style="display:none;margin-bottom:10px;">
+      <button class="btn btn-ghost" style="width:100%;justify-content:center;padding:10px;font-size:13px;border:1px solid var(--navy-light);color:var(--gray);" onclick="copyPreviousInning()">
+        &#128203; <span id="copyPrevLabel">Copy Previous Inning</span>
+      </button>
+    </div>
+    <div class="card" style="overflow:visible;">
+      <table class="lineup-table">
+        <thead><tr>
+          <th style="width:24px;"></th>
+          <th class="left" style="min-width:75px;">PLAYER</th>
+          <th style="width:50px;">POS</th>
+          <th style="width:32px;">SAT</th>
+          <th style="width:32px;">IP</th>
+          <th style="width:58px;" id="abHeader">AB</th>
+        </tr></thead>
+        <tbody id="lineupBody"></tbody>
+      </table>
+    </div>
+    <button class="btn btn-primary" onclick="endGame()" style="background:var(--red-bg);color:var(--red);border:1px solid #5a2a2a;">
+      &#127937; END GAME &amp; SAVE
+    </button>
+  </div>
+</div>
+
+<!-- PITCHING TAB -->
+<div id="tab-pitching" class="page">
+  <div id="noPitchGame" class="empty-state">
+    <div class="empty-state-icon">&#9918;</div>
+    <div class="empty-state-text">Start a game to track pitches</div>
+  </div>
+  <div id="pitchingActive" style="display:none;">
+    <div class="card" style="margin-bottom:10px;">
+      <div class="card-header">PITCH LIMITS <span id="pitchLimitLabel" style="font-size:11px;color:var(--gray);"></span></div>
+      <div style="padding:8px 14px 4px;font-size:12px;color:var(--gray);">Tap the count to enter directly · Conflicts auto-flagged</div>
+      <div id="pitchRulesBlock"></div>
+    </div>
+    <div class="card"><div id="pitchList"></div></div>
+  </div>
+</div>
+
+<!-- TOURNAMENT TAB -->
+<div id="tab-tournament" class="page">
+  <div id="noTournState" class="empty-state">
+    <div class="empty-state-icon">&#127942;</div>
+    <div class="empty-state-text">No active tournament</div>
+    <div style="font-size:12px;color:var(--gray);margin-top:6px;">Start a Perfect Game or Training Legends game</div>
+  </div>
+  <div id="tournActive" style="display:none;">
+    <div class="card">
+      <div class="card-header" id="tournHeader">TOURNAMENT</div>
+      <div style="padding:8px 14px 6px;"><div id="tournMeta" style="font-size:12px;color:var(--gray);"></div></div>
+      <div style="padding:0 14px 10px;">
+        <button class="btn btn-danger btn-sm" onclick="endTournament()">&#127937; End Tournament</button>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-header">PITCHER STATUS</div>
+      <div id="tournPitcherList" style="padding:10px;"></div>
+    </div>
+    <div class="card">
+      <div class="card-header">GAME LOG</div>
+      <div id="tournGameLog"></div>
+    </div>
+  </div>
+  <div id="pastTournaments" style="margin-top:6px;"></div>
+</div>
+
+<!-- ROSTER TAB -->
+<div id="tab-roster" class="page">
+  <div class="card">
+    <div class="card-header">MY ROSTER <span id="rosterCount" style="font-size:11px;color:var(--gray);"></span></div>
+    <div id="rosterList"></div>
+    <div class="add-player-form">
+      <input type="text" id="newPlayerName" placeholder="Player name" style="flex:2;">
+      <input type="number" id="newPlayerNum" placeholder="#" style="flex:0.6;min-width:46px;">
+      <button class="btn btn-success btn-sm" onclick="addPlayer()" style="flex:0.7;padding:10px 6px;font-size:12px;justify-content:center;">+ADD</button>
+    </div>
+  </div>
+</div>
+
+<!-- HISTORY TAB -->
+<div id="tab-history" class="page">
+  <div id="historyList">
+    <div class="empty-state"><div class="empty-state-icon">&#128202;</div><div class="empty-state-text">No games yet</div></div>
+  </div>
+</div>
+
+<!-- Position modal -->
+<div class="modal-overlay hidden" id="posModal">
+  <div class="modal-sheet">
+    <div class="modal-title" id="modalTitle">Set Position</div>
+    <div class="pos-grid" id="posGrid"></div>
+    <button class="btn btn-ghost" style="width:100%;margin-top:10px;justify-content:center;padding:12px;" onclick="closeModal()">Cancel</button>
+  </div>
+</div>
+
+<!-- Pitch entry modal -->
+<div class="pitch-input-modal hidden" id="pitchModal">
+  <div class="pitch-input-box">
+    <div class="pitch-input-title" id="pitchModalTitle">PITCH COUNT</div>
+    <div id="pitchModalSubtitle" style="font-size:11px;color:var(--gray);font-family:var(--font-display);margin-bottom:8px;"></div>
+    <input type="number" class="pitch-number-input" id="pitchNumberInput" min="0" max="200" inputmode="numeric">
+    <div style="font-size:11px;color:var(--gray);margin-top:6px;" id="pitchModalHint"></div>
+    <div class="pitch-input-actions">
+      <button class="btn btn-ghost" style="flex:1;justify-content:center;padding:11px;" onclick="closePitchModal()">Cancel</button>
+      <button class="btn btn-primary" style="flex:1;padding:11px;" onclick="confirmPitchEntry()">Set</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ========================
+// CONSTANTS
+// ========================
+const POSITIONS = ['P','C','1B','2B','3B','SS','LF','CF','RF'];
+const TOTAL_INNINGS = 6;
+const PG_DAILY_PITCH = 75;
+const PG_DAILY_OUTS = 18;
+const PG_REST_OUTS = 9;
+const PG_EVENT_SHORT = 100;
+const PG_EVENT_LONG = 140;
+
+function tlLimit(gameNum) { return Math.max(6, 6 + Math.max(0, gameNum - 4)); }
+
+// ========================
+// STATE
+// ========================
+let state = {
+  roster: [], battingOrder: [],
+  gameActive: false, gameType: 'regular', season: 'early',
+  gameDate: '', currentInning: 1,
+  innings: Array(TOTAL_INNINGS).fill(null).map(() => ({})),
+  atBats: {}, pitches: {},
+  activeTournament: null,
+  tournaments: [],
+  history: [],
+};
+let isFirebaseReady = false;
+let lastSaveTime = 0;
+
+// ========================
+// PERSISTENCE
+// ========================
+function manualSync() {
+  if (!isFirebaseReady || !window.fbFetch) {
+    alert('Not connected to Firebase. Check your internet connection.');
+    return;
+  }
+  updateSyncDot('syncing');
+  window.fbFetch(data => {
+    if (data) {
+      mergeRemoteState(data);
+      updateSyncDot('live', 'SYNCED');
+      setTimeout(() => updateSyncDot('live', 'LIVE'), 2000);
+    } else {
+      updateSyncDot('local');
+      alert('No data found on server. If a game is active on another device, make sure it has been saved.');
+    }
+  });
+}
+
+function save() {
+  lastSaveTime = Date.now();
+  state._updatedAt = lastSaveTime;
+  try { localStorage.setItem('dugout_v3', JSON.stringify(state)); } catch(e) {}
+  if (isFirebaseReady && window.fbSave) window.fbSave(state);
+}
+
+function load() {
+  try {
+    const raw = localStorage.getItem('dugout_v3');
+    if (raw) {
+      const p = JSON.parse(raw);
+      state = { ...state, ...p };
+      if (!Array.isArray(state.innings) || state.innings.length !== TOTAL_INNINGS)
+        state.innings = Array(TOTAL_INNINGS).fill(null).map(() => ({}));
+      if (!state.tournaments) state.tournaments = [];
+      if (!state.history) state.history = [];
+    }
+  } catch(e) {}
+}
+
+function mergeRemoteState(remote) {
+  if (!remote) return;
+  // Only block remote updates if THIS device has actually saved something this session
+  // (lastSaveTime > 0 means we've called save() since page load)
+  if (lastSaveTime > 0) {
+    // Ignore remote state older than our last save
+    if (remote._updatedAt && remote._updatedAt <= lastSaveTime) return;
+    // Don't let remote state add back a game we just ended this session
+    if (!state.gameActive && remote.gameActive) return;
+    // Don't let stale remote wipe a game we have active this session
+    if (state.gameActive && !remote.gameActive) return;
+  }
+  // If lastSaveTime === 0 (fresh load, no saves yet), always accept Firebase state
+  state = {
+    roster: remote.roster || [],
+    battingOrder: remote.battingOrder || [],
+    gameActive: !!remote.gameActive,
+    gameType: remote.gameType || 'regular',
+    season: remote.season || 'early',
+    gameDate: remote.gameDate || '',
+    currentInning: remote.currentInning || 1,
+    innings: Array.isArray(remote.innings) && remote.innings.length === TOTAL_INNINGS
+      ? remote.innings : Array(TOTAL_INNINGS).fill(null).map(() => ({})),
+    atBats: remote.atBats || {},
+    pitches: remote.pitches || {},
+    activeTournament: remote.activeTournament || null,
+    tournaments: remote.tournaments || [],
+    history: remote.history || [],
+    _updatedAt: remote._updatedAt || 0,
+    currentTournMeta: remote.currentTournMeta || null,
+  };
+  try { localStorage.setItem('dugout_v3', JSON.stringify(state)); } catch(e) {}
+  renderAll();
+  // Refresh tournament pickers after any remote sync (only if user hasn't edited)
+  if (!pgUserEdited && !tlUserEdited) setTimeout(populateTournamentPickers, 50);
+}
+
+// ========================
+// FIREBASE
+// ========================
+if (window._fbReady !== undefined) setTimeout(() => window.dispatchEvent(new Event('firebase-ready')), 100);
+window.addEventListener('firebase-ready', () => {
+  isFirebaseReady = !!window._fbReady;
+  if (isFirebaseReady) {
+    updateSyncDot('syncing');
+    if (window.fbFetch) window.fbFetch(data => {
+      mergeRemoteState(data);
+      updateSyncDot('live', 'LIVE');
+    });
+    if (window.fbListen) window.fbListen(data => {
+      mergeRemoteState(data);
+      updateSyncDot('live', 'LIVE');
+    });
+  } else {
+    updateSyncDot('local');
+  }
+});
+function updateSyncDot(s, msg) {
+  const d = document.getElementById('syncDot');
+  const lbl = document.getElementById('syncLabel');
+  if (d) d.className = 'sync-dot ' + s;
+  if (lbl) {
+    if (s === 'live') lbl.textContent = msg || 'LIVE';
+    else if (s === 'local') lbl.textContent = 'LOCAL';
+    else if (s === 'syncing') lbl.textContent = 'SYNCING...';
+    else lbl.textContent = 'OFFLINE';
+  }
+}
+
+// ========================
+// TABS
+// ========================
+const TAB_NAMES = ['lineup','pitching','tournament','roster','history'];
+function switchTab(name) {
+  document.querySelectorAll('.tab').forEach((t,i) => t.classList.toggle('active', TAB_NAMES[i] === name));
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.getElementById('tab-' + name).classList.add('active');
+  if (name === 'lineup') renderLineup();
+  else if (name === 'pitching') renderPitching();
+  else if (name === 'tournament') renderTournament();
+  else if (name === 'roster') renderRoster();
+  else if (name === 'history') renderHistory();
+}
+
+function renderAll() {
+  renderLineup(); renderPitching(); renderTournament(); renderRoster(); renderHistory(); updateBadge();
+  // Re-populate tournament pickers if pg/tl panel is currently visible
+  // but only if user hasn't already made manual edits
+  const pgVisible = document.getElementById('pgOptions') && document.getElementById('pgOptions').style.display !== 'none';
+  const tlVisible = document.getElementById('tlOptions') && document.getElementById('tlOptions').style.display !== 'none';
+  if ((pgVisible || tlVisible) && !pgUserEdited && !tlUserEdited) populateTournamentPickers();
+}
+
+function updateBadge() {
+  const badge = document.getElementById('gameBadge');
+  if (!badge) return;
+  if (!state.gameActive) { badge.className = 'game-badge none'; badge.textContent = 'NO GAME'; return; }
+  const map = { regular:['regular','REGULAR'], cup:['cup','CUP'], pg:['pg','PERF GAME'], tl:['tl','TRN LEGENDS'] };
+  const [cls, lbl] = map[state.gameType] || ['regular','GAME'];
+  badge.className = 'game-badge ' + cls;
+  badge.textContent = lbl;
+}
+
+// ========================
+// GAME SETUP
+// ========================
+// ========================
+// TOURNAMENT CONTINUATION
+// ========================
+let pgMode = 'new'; // 'continue' or 'new'
+let tlMode = 'new';
+let pgUserEdited = false; // true once user has manually changed pg day/game fields
+let tlUserEdited = false;
+
+function populateTournamentPickers() {
+  // Only run when the no-game setup screen is visible
+  if (state.gameActive) return;
+  // PG
+  const pgTourn = state.activeTournament && state.activeTournament.type === 'pg' ? state.activeTournament : null;
+  const pgBlock = document.getElementById('pgContinueBlock');
+  const pgNewFields = document.getElementById('pgNewFields');
+  if (pgBlock && pgNewFields) {
+    if (pgTourn) {
+      const gamesPlayed = pgTourn.games.length;
+      const nextGame = gamesPlayed + 1;
+      const lastDay = pgTourn.games.length ? pgTourn.games[pgTourn.games.length - 1].dayNum : 1;
+      document.getElementById('pgContinueName').textContent = pgTourn.name;
+      document.getElementById('pgContinueMeta').textContent =
+        gamesPlayed + ' game' + (gamesPlayed !== 1 ? 's' : '') + ' played · ' +
+        pgTourn.eventLen + '-day event · ' + pgTourn.eventPitchMax + 'p event max';
+      pgBlock.style.display = 'block';
+      // Auto-select continue mode and pre-fill
+      pgSelectContinue();
+    } else {
+      pgBlock.style.display = 'none';
+      pgMode = 'new';
+      pgNewFields.style.display = 'block';
+    }
+  }
+
+  // TL
+  const tlTourn = state.activeTournament && state.activeTournament.type === 'tl' ? state.activeTournament : null;
+  const tlBlock = document.getElementById('tlContinueBlock');
+  const tlNewFields = document.getElementById('tlNewFields');
+  if (tlBlock && tlNewFields) {
+    if (tlTourn) {
+      const gamesPlayed = tlTourn.games.length;
+      document.getElementById('tlContinueName').textContent = tlTourn.name;
+      document.getElementById('tlContinueMeta').textContent =
+        gamesPlayed + ' game' + (gamesPlayed !== 1 ? 's' : '') + ' played';
+      tlBlock.style.display = 'block';
+      // Auto-select continue mode and pre-fill
+      tlSelectContinue();
+    } else {
+      tlBlock.style.display = 'none';
+      tlMode = 'new';
+      tlNewFields.style.display = 'block';
+    }
+  }
+}
+
+function buildGameOptions(selectId, nextGame) {
+  const sel = document.getElementById(selectId);
+  if (!sel) return;
+  sel.innerHTML = '';
+  for (let i = nextGame; i <= 10; i++) {
+    const opt = document.createElement('option');
+    opt.value = i;
+    opt.textContent = 'Game ' + i;
+    sel.appendChild(opt);
+  }
+  sel.value = nextGame;
+}
+
+function pgSelectContinue() {
+  pgMode = 'continue';
+  const pgTourn = state.activeTournament;
+  if (!pgTourn) return;
+  // Pre-fill and lock event length / name
+  const newFields = document.getElementById('pgNewFields');
+  if (newFields) newFields.style.display = 'none';
+  // Pre-fill game # (next in sequence)
+  const nextGame = pgTourn.games.length + 1;
+  const sel = document.getElementById('pgGameNum');
+  if (sel) sel.value = Math.min(nextGame, 10);
+  // Pre-fill day # (same as last game's day, with warning)
+  const lastGame = pgTourn.games.length ? pgTourn.games[pgTourn.games.length - 1] : null;
+  const lastDay = lastGame ? (lastGame.dayNum || 1) : 1;
+  const dayEl = document.getElementById('pgDayNum');
+  if (dayEl) dayEl.value = lastDay;
+  showPgDayWarning(lastDay);
+  // Style continue button as active
+  stylePickerBtns('pg', 'continue');
+}
+
+function pgSelectNew() {
+  pgMode = 'new';
+  const newFields = document.getElementById('pgNewFields');
+  if (newFields) newFields.style.display = 'block';
+  const warn = document.getElementById('pgDayWarning');
+  if (warn) warn.style.display = 'none';
+  // Restore full game options for a new tournament
+  buildGameOptions('pgGameNum', 1);
+  stylePickerBtns('pg', 'new');
+}
+
+function tlSelectContinue() {
+  tlMode = 'continue';
+  const tlTourn = state.activeTournament;
+  if (!tlTourn) return;
+  const newFields = document.getElementById('tlNewFields');
+  if (newFields) newFields.style.display = 'none';
+  // Rebuild game # dropdown starting from next unplayed game
+  const nextGame = tlTourn.games.length + 1;
+  buildGameOptions('tlGameNum', Math.min(nextGame, 10));
+  stylePickerBtns('tl', 'continue');
+}
+
+function tlSelectNew() {
+  tlMode = 'new';
+  const newFields = document.getElementById('tlNewFields');
+  if (newFields) newFields.style.display = 'block';
+  // Restore full game options for a new tournament
+  buildGameOptions('tlGameNum', 1);
+  stylePickerBtns('tl', 'new');
+}
+
+function stylePickerBtns(type, mode) {
+  const block = document.getElementById(type + 'ContinueBlock');
+  if (!block) return;
+  const btns = block.querySelectorAll('button');
+  if (btns.length < 2) return;
+  const activeColor = type === 'pg' ? 'var(--blue)' : 'var(--purple)';
+  const activeBorder = type === 'pg' ? '#2255aa' : '#5533aa';
+  const activeBg = type === 'pg' ? 'rgba(68,136,255,0.15)' : 'rgba(170,136,255,0.15)';
+  if (mode === 'continue') {
+    btns[0].style.cssText = 'flex:1;justify-content:center;background:' + activeBg + ';color:' + activeColor + ';border:1px solid ' + activeBorder + ';';
+    btns[1].style.cssText = 'flex:1;justify-content:center;background:var(--navy-light);color:var(--gray);border:1px solid var(--gray-dark);';
+  } else {
+    btns[0].style.cssText = 'flex:1;justify-content:center;background:var(--navy-light);color:var(--gray);border:1px solid var(--gray-dark);';
+    btns[1].style.cssText = 'flex:1;justify-content:center;background:' + activeBg + ';color:' + activeColor + ';border:1px solid ' + activeBorder + ';';
+  }
+}
+
+function showPgDayWarning(day) {
+  const warn = document.getElementById('pgDayWarning');
+  if (!warn) return;
+  // Only show warnings when continuing an existing tournament
+  if (pgMode !== 'continue' || !state.activeTournament) { warn.style.display = 'none'; return; }
+  // Check if any pitcher has rest requirements on this day
+  const pgTourn = state.activeTournament;
+  const affectedPitchers = state.roster.filter(p => {
+    const t = (pgTourn.pitcherTotals || {})[p.id];
+    if (!t) return false;
+    const needsRest = getLastGameOuts(p.id) > PG_REST_OUTS;
+    const consecDays = t.daysPitched.includes(day - 1) && t.daysPitched.includes(day - 2);
+    return needsRest || consecDays;
+  });
+  if (affectedPitchers.length) {
+    warn.style.display = 'block';
+    warn.textContent = '⚠️ Day ' + day + ': ' + affectedPitchers.map(p => p.name.split(' ')[0]).join(', ') +
+      (affectedPitchers.length === 1 ? ' has' : ' have') + ' rest requirements. Confirm this is the correct day.';
+  } else {
+    warn.style.display = 'block';
+    warn.style.color = 'var(--gray)';
+    warn.style.background = 'transparent';
+    warn.style.border = 'none';
+    warn.textContent = 'Day ' + day + ' pre-filled from last game. Adjust if needed.';
+  }
+}
+
+// Re-run warning when day changes manually
+document.addEventListener('change', function(e) {
+  if (e.target && (e.target.id === 'pgDayNum' || e.target.id === 'pgGameNum')) {
+    pgUserEdited = true;
+    if (e.target.id === 'pgDayNum' && pgMode === 'continue') showPgDayWarning(parseInt(e.target.value));
+  }
+  if (e.target && (e.target.id === 'tlGameNum')) {
+    tlUserEdited = true;
+  }
+});
+
+function selectGameType(type) {
+  // Only updates DOM — state.gameType is set from DOM at startGame() time
+  // Do NOT write state here, it causes Firebase sync to revert user's selection
+  ['regular','cup','pg','tl'].forEach(t => {
+    const el = document.getElementById('opt-' + t);
+    if (!el) return;
+    el.classList.toggle('selected', t === type);
+    const chk = el.querySelector('.setup-check');
+    if (chk) chk.textContent = t === type ? String.fromCharCode(10003) : '';
+  });
+  const pg = document.getElementById('pgOptions');
+  const tl = document.getElementById('tlOptions');
+  const ss = document.getElementById('seasonSection');
+  if (pg) pg.style.display = type === 'pg' ? 'block' : 'none';
+  if (tl) tl.style.display = type === 'tl' ? 'block' : 'none';
+  if (ss) ss.style.display = (type === 'regular' || type === 'cup') ? 'block' : 'none';
+  pgUserEdited = false;
+  tlUserEdited = false;
+  if (type === 'pg' || type === 'tl') {
+    // Only run retry timers if activeTournament isn't loaded yet
+    // Once user has interacted, retries must not overwrite their selections
+    if (!state.activeTournament) {
+      populateTournamentPickers();
+      setTimeout(() => { if (!pgUserEdited && !tlUserEdited) populateTournamentPickers(); }, 800);
+      setTimeout(() => { if (!pgUserEdited && !tlUserEdited) populateTournamentPickers(); }, 2000);
+    } else {
+      populateTournamentPickers();
+    }
+  }
+}
+
+function selectSeason(s) {
+  state.season = s;
+  document.getElementById('btn-early').classList.toggle('active', s === 'early');
+  document.getElementById('btn-late').classList.toggle('active', s === 'late');
+}
+
+function startGame() {
+  if (state.roster.length < 2) { alert('Add at least 2 players first!'); return; }
+  // Read game type from DOM (whichever option is selected) — don't rely on state which may have been overwritten by Firebase sync
+  const selectedOpt = ['regular','cup','pg','tl'].find(t => document.getElementById('opt-' + t)?.classList.contains('selected')) || 'regular';
+  state.gameType = selectedOpt;
+  const type = state.gameType;
+  const date = document.getElementById('gameDateInput').value.trim() || new Date().toLocaleDateString();
+  let tournMeta = null;
+
+  if (type === 'pg') {
+    const gameNum = parseInt(document.getElementById('pgGameNum').value);
+    const dayNum = parseInt(document.getElementById('pgDayNum').value);
+    if (pgMode === 'continue' && state.activeTournament && state.activeTournament.type === 'pg') {
+      // Continue existing tournament — reuse it, just update meta
+      const t = state.activeTournament;
+      tournMeta = { type:'pg', eventLen: t.eventLen, gameNum, dayNum,
+        tournName: t.name, eventPitchMax: t.eventPitchMax };
+    } else {
+      const eventLen = parseInt(document.getElementById('pgEventLength').value);
+      const tournName = (document.getElementById('pgTournName').value || '').trim() || 'Perfect Game Tournament';
+      const eventPitchMax = eventLen >= 5 ? PG_EVENT_LONG : PG_EVENT_SHORT;
+      tournMeta = { type:'pg', eventLen, gameNum, dayNum, tournName, eventPitchMax };
+      state.activeTournament = {
+        id: Date.now().toString(), name: tournName, type: 'pg',
+        eventLen, eventPitchMax, games: [], pitcherTotals: {}
+      };
+    }
+  } else if (type === 'tl') {
+    const gameNum = parseInt(document.getElementById('tlGameNum').value);
+    if (tlMode === 'continue' && state.activeTournament && state.activeTournament.type === 'tl') {
+      // Continue existing tournament
+      const t = state.activeTournament;
+      tournMeta = { type:'tl', gameNum, tournName: t.name, inningLimit: tlLimit(gameNum) };
+    } else {
+      const tournName = (document.getElementById('tlTournName').value || '').trim() || 'Training Legends Tournament';
+      tournMeta = { type:'tl', gameNum, tournName, inningLimit: tlLimit(gameNum) };
+      state.activeTournament = {
+        id: Date.now().toString(), name: tournName, type: 'tl',
+        games: [], pitcherTotals: {}
+      };
+    }
+  }
+
+  state.gameActive = true;
+  state.currentInning = 1;
+  state.innings = Array(TOTAL_INNINGS).fill(null).map(() => ({}));
+  state.atBats = {};
+  state.pitches = {};
+  state.battingOrder = state.roster.map(p => p.id);
+  state.gameDate = date;
+  state.currentTournMeta = tournMeta;
+  state.roster.forEach(p => {
+    state.atBats[p.id] = 0;
+    state.pitches[p.id] = { count:0, removed:false, catcherInnings:0, outs:0, innings:0 };
+  });
+  save();
+  renderAll();
+}
+
+function endGame() {
+  if (!confirm('End game and save to history?')) return;
+  const type = state.gameType;
+
+  if ((type === 'pg' || type === 'tl') && state.activeTournament) {
+    const gameRecord = {
+      date: state.gameDate,
+      gameNum: state.currentTournMeta ? state.currentTournMeta.gameNum : 1,
+      dayNum: state.currentTournMeta ? state.currentTournMeta.dayNum : 1,
+      pitches: JSON.parse(JSON.stringify(state.pitches)),
+      roster: state.roster.map(p => ({id:p.id, name:p.name, number:p.number})),
+    };
+    state.activeTournament.games.push(gameRecord);
+
+    if (!state.activeTournament.pitcherTotals) state.activeTournament.pitcherTotals = {};
+    state.roster.forEach(p => {
+      const pd = state.pitches[p.id] || {};
+      if (!state.activeTournament.pitcherTotals[p.id])
+        state.activeTournament.pitcherTotals[p.id] = { totalPitches:0, totalOuts:0, totalInnings:0, daysPitched:[], gamesInDay:{} };
+      const t = state.activeTournament.pitcherTotals[p.id];
+      t.totalPitches += pd.count || 0;
+      t.totalOuts += pd.outs || 0;
+      t.totalInnings += pd.innings || 0;
+      const day = state.currentTournMeta ? state.currentTournMeta.dayNum : 1;
+      // Same fix: only mark as pitched if they actually threw pitches or recorded outs
+      if ((pd.count > 0 || pd.outs > 0) && !t.daysPitched.includes(day))
+        t.daysPitched.push(day);
+      if (!t.gamesInDay[day]) t.gamesInDay[day] = 0;
+      // Only count as a pitching appearance if they threw pitches or recorded outs
+      // pd.innings tracks defensive innings (from lineup tab) so must NOT be used here
+      const actuallyPitched = (type === 'pg' || type === 'tl')
+        ? (pd.count > 0 || pd.outs > 0)
+        : (pd.count > 0);
+      if (actuallyPitched) t.gamesInDay[day]++;
+    });
+  }
+
+  state.history.unshift({
+    date: state.gameDate, type, season: state.season,
+    tournMeta: state.currentTournMeta || null,
+    innings: JSON.parse(JSON.stringify(state.innings)),
+    atBats: Object.assign({}, state.atBats),
+    pitches: JSON.parse(JSON.stringify(state.pitches)),
+    roster: state.roster.map(p => ({id:p.id, name:p.name, number:p.number})),
+    battingOrder: (state.battingOrder || []).slice(),
+  });
+
+  state.gameActive = false;
+  state.innings = Array(TOTAL_INNINGS).fill(null).map(() => ({}));
+  state.atBats = {}; state.pitches = {};
+  state.currentInning = 1; state.battingOrder = [];
+  state.currentTournMeta = null;
+  save();
+  try {
+    const stored = JSON.parse(localStorage.getItem('dugout_v3') || '{}');
+    } catch(e) { console.log('[endGame] localStorage read error:', e); }
+  renderAll();
+}
+
+function endTournament() {
+  if (!state.activeTournament) return;
+  if (!confirm('End this tournament? It will be saved to history.')) return;
+  const copy = JSON.parse(JSON.stringify(state.activeTournament));
+  copy.roster = state.roster.map(p => ({id:p.id, name:p.name, number:p.number}));
+  state.tournaments.unshift(copy);
+  state.activeTournament = null;
+  pgMode = 'new';
+  tlMode = 'new';
+  pgUserEdited = false;
+  tlUserEdited = false;
+  save(); renderTournament();
+}
+
+// ========================
+// INNING NAV
+// ========================
+function changeInning(dir) {
+  const next = state.currentInning + dir;
+  if (next < 1 || next > TOTAL_INNINGS) return;
+  state.currentInning = next;
+  save(); renderLineup();
+}
+
+// ========================
+// LINEUP RENDER
+// ========================
+function renderLineup() {
+  const active = state.gameActive;
+  const noGame = document.getElementById('noGameState');
+  const activeGame = document.getElementById('activeGameState');
+  if (noGame) noGame.style.display = active ? 'none' : 'block';
+  if (activeGame) activeGame.style.display = active ? 'block' : 'none';
+  if (!active) { updateBadge(); return; }
+
+  const isCup = state.gameType === 'cup';
+  const inningLbl = document.getElementById('inningLabel');
+  if (inningLbl) inningLbl.textContent = 'INNING ' + state.currentInning;
+  const prevBtn = document.getElementById('prevInningBtn');
+  const nextBtn = document.getElementById('nextInningBtn');
+  if (prevBtn) prevBtn.disabled = state.currentInning <= 1;
+  if (nextBtn) nextBtn.disabled = state.currentInning >= TOTAL_INNINGS;
+  const abHdr = document.getElementById('abHeader');
+  if (abHdr) abHdr.style.display = isCup ? 'none' : '';
+
+  const cupCard = document.getElementById('cupStatusCard');
+  if (cupCard) { cupCard.style.display = isCup ? 'block' : 'none'; if (isCup) renderCupStatus(); }
+
+  const copyBtn = document.getElementById('copyPrevBtn');
+  const copyLbl = document.getElementById('copyPrevLabel');
+  if (copyBtn) {
+    copyBtn.style.display = state.currentInning > 1 ? 'block' : 'none';
+    if (copyLbl && state.currentInning > 1) copyLbl.textContent = 'Copy Inning ' + (state.currentInning - 1) + ' Assignments';
+  }
+
+  const order = (state.battingOrder && state.battingOrder.length)
+    ? state.battingOrder.map(id => state.roster.find(p => p.id === id)).filter(Boolean)
+    : state.roster;
+  const inningData = state.innings[state.currentInning - 1] || {};
+  const tbody = document.getElementById('lineupBody');
+  if (!tbody) return;
+
+  tbody.innerHTML = order.map((p, idx) => {
+    const pos = inningData[p.id] || null;
+    const isSit = pos === 'SIT', isPitch = pos === 'P', isCatch = pos === 'C';
+    let btnCls = 'pos-btn';
+    if (isSit) btnCls += ' sitting';
+    else if (isPitch) btnCls += ' pitching';
+    else if (isCatch) btnCls += ' catching';
+    else if (pos) btnCls += ' playing';
+    const satCount = state.innings.slice(0, state.currentInning).filter(inn => inn[p.id] === 'SIT').length;
+    const ipCount = state.innings.slice(0, state.currentInning).filter(inn => inn[p.id] && inn[p.id] !== 'SIT').length;
+    const rowCls = satCount > 0 ? 'player-row-green' : 'player-row-red';
+    const satCls = satCount > 0 ? 'green' : 'red';
+    const ab = state.atBats[p.id] || 0;
+    const abCell = isCup ? '' : '<td><div class="ab-cell">' +
+      '<button class="ab-btn" onclick="adjustAB(\'' + p.id + '\',-1)">-</button>' +
+      '<span class="ab-count">' + ab + '</span>' +
+      '<button class="ab-btn" onclick="adjustAB(\'' + p.id + '\',1)">+</button>' +
+      '</div></td>';
+    return '<tr class="' + rowCls + '" data-id="' + p.id + '" data-idx="' + idx + '" ' +
+      'ondragover="dragOver(event)" ondrop="drop(event)" ondragleave="dragLeave(event)">' +
+      '<td draggable="true" ondragstart="dragStart(event)" ' +
+      'ontouchstart="touchStart(event)" ontouchmove="touchMove(event)" ontouchend="touchEnd(event)" ' +
+      'style="touch-action:none;"><span class="drag-handle">&#8801;</span></td>' +
+      '<td><div class="player-name-cell">' + p.name + '</div>' +
+      (p.number ? '<div class="player-num-badge">#' + p.number + '</div>' : '') + '</td>' +
+      '<td><button class="' + btnCls + '" onclick="openPosModal(\'' + p.id + '\')">' + (pos || '&mdash;') + '</button></td>' +
+      '<td><div class="innings-sat-cell ' + satCls + '">' + satCount + '</div></td>' +
+      '<td><div class="innings-sat-cell" style="color:var(--green);">' + ipCount + '</div></td>' +
+      abCell + '</tr>';
+  }).join('');
+
+  updateBadge();
+  renderInningDots();
+}
+
+function renderCupStatus() {
+  const sat = [], needs = [];
+  state.roster.forEach(p => {
+    const hasSat = state.innings.some(inn => inn[p.id] === 'SIT');
+    (hasSat ? sat : needs).push(p.name);
+  });
+  const el = document.getElementById('cupStatus');
+  if (el) el.innerHTML =
+    needs.map(n => '<div class="cup-pill needs">&#9203; ' + n + '</div>').join('') +
+    sat.map(n => '<div class="cup-pill sat">&#10003; ' + n + '</div>').join('');
+}
+
+function renderInningDots() {
+  const dots = document.getElementById('inningDots');
+  if (!dots) return;
+  const total = state.roster.length;
+  dots.innerHTML = Array.from({length: TOTAL_INNINGS}, (_, i) => {
+    const assigned = state.roster.filter(p => state.innings[i] && state.innings[i][p.id]).length;
+    const complete = assigned === total && total > 0;
+    const isCur = i === state.currentInning - 1;
+    const color = isCur ? 'var(--gold)' : complete ? 'var(--green)' : assigned > 0 ? 'var(--amber)' : 'var(--gray-dark)';
+    const size = isCur ? '10px' : '8px';
+    return '<div title="Inning ' + (i+1) + ': ' + assigned + '/' + total + '" style="width:' + size + ';height:' + size + ';border-radius:50%;background:' + color + ';' + (isCur ? 'box-shadow:0 0 6px var(--gold);' : '') + '"></div>';
+  }).join('');
+}
+
+function copyPreviousInning() {
+  if (state.currentInning <= 1) return;
+  const prev = state.innings[state.currentInning - 2] || {};
+  let copied = 0;
+  state.roster.forEach(p => {
+    if (!state.innings[state.currentInning - 1][p.id] && prev[p.id]) {
+      state.innings[state.currentInning - 1][p.id] = prev[p.id]; copied++;
+    }
+  });
+  if (!copied) { alert('All players already assigned this inning.'); return; }
+  save(); renderLineup();
+}
+
+// ========================
+// DRAG & DROP
+// ========================
+let dragSrcIdx = null, touchDragId = null, touchCurrentRow = null;
+function dragStart(e) {
+  const row = e.currentTarget.closest('tr');
+  dragSrcIdx = parseInt(row.dataset.idx);
+  row.classList.add('dragging');
+  e.dataTransfer.effectAllowed = 'move';
+}
+function dragOver(e) {
+  e.preventDefault();
+  document.querySelectorAll('#lineupBody tr').forEach(r => r.classList.remove('drag-over'));
+  e.currentTarget.closest('tr').classList.add('drag-over');
+}
+function dragLeave(e) { e.currentTarget.closest('tr').classList.remove('drag-over'); }
+function drop(e) {
+  e.preventDefault();
+  const row = e.currentTarget.closest('tr');
+  const destIdx = parseInt(row.dataset.idx);
+  row.classList.remove('drag-over');
+  document.querySelectorAll('#lineupBody tr').forEach(r => r.classList.remove('dragging'));
+  if (dragSrcIdx === null || dragSrcIdx === destIdx) return;
+  reorderBattingOrder(dragSrcIdx, destIdx);
+  dragSrcIdx = null;
+}
+function touchStart(e) {
+  const row = e.currentTarget.closest('tr');
+  touchDragId = row.dataset.id; touchCurrentRow = row;
+  row.style.opacity = '0.5';
+}
+function touchMove(e) {
+  e.preventDefault();
+  const y = e.touches[0].clientY;
+  document.querySelectorAll('#lineupBody tr').forEach(r => {
+    r.classList.remove('drag-over');
+    const rect = r.getBoundingClientRect();
+    if (y >= rect.top && y <= rect.bottom && r.dataset.id !== touchDragId) r.classList.add('drag-over');
+  });
+}
+function touchEnd(e) {
+  if (!touchDragId) return;
+  if (touchCurrentRow) touchCurrentRow.style.opacity = '';
+  let destId = null;
+  document.querySelectorAll('#lineupBody tr').forEach(r => {
+    if (r.classList.contains('drag-over')) { destId = r.dataset.id; r.classList.remove('drag-over'); }
+  });
+  if (destId && destId !== touchDragId) {
+    const order = state.battingOrder || state.roster.map(p => p.id);
+    reorderBattingOrder(order.indexOf(touchDragId), order.indexOf(destId));
+  }
+  touchDragId = null; touchCurrentRow = null;
+}
+function reorderBattingOrder(from, to) {
+  const order = (state.battingOrder || state.roster.map(p => p.id)).slice();
+  const [moved] = order.splice(from, 1);
+  order.splice(to, 0, moved);
+  state.battingOrder = order;
+  save(); renderLineup();
+}
+
+// ========================
+// POSITION MODAL
+// ========================
+let modalPlayerId = null;
+function openPosModal(playerId) {
+  if (!state.gameActive) return;
+  modalPlayerId = playerId;
+  const player = state.roster.find(p => p.id === playerId);
+  const currentPos = state.innings[state.currentInning - 1][playerId] || null;
+  const modalTitle = document.getElementById('modalTitle');
+  if (modalTitle) modalTitle.textContent = player.name + ' - Inning ' + state.currentInning;
+
+  const pd = state.pitches[playerId] || {};
+  const pitchLimit = state.season === 'early' ? 65 : 85;
+  const type = state.gameType;
+  const ci = pd.catcherInnings || 0;
+  const count = pd.count || 0;
+  const outs = pd.outs || 0;
+  const innPitched = pd.innings || 0;
+
+  let cantPitch = false, pitchWarn = '';
+  if (type === 'regular' || type === 'cup') {
+    if (pd.removed) { cantPitch = true; pitchWarn = '(removed)'; }
+    else if (count >= pitchLimit) { cantPitch = true; pitchWarn = '(limit)'; }
+    else if (ci >= 4) { cantPitch = true; pitchWarn = '(C limit)'; }
+  } else if (type === 'pg') {
+    if (pd.removed) { cantPitch = true; pitchWarn = '(removed)'; }
+    else if (count >= PG_DAILY_PITCH) { cantPitch = true; pitchWarn = '(75p limit)'; }
+    else if (outs >= PG_DAILY_OUTS) { cantPitch = true; pitchWarn = '(18 out limit)'; }
+    else {
+      const eventTotal = getTournEventPitches(playerId);
+      const eventMax = state.currentTournMeta ? state.currentTournMeta.eventPitchMax : PG_EVENT_SHORT;
+      if (eventTotal >= eventMax) { cantPitch = true; pitchWarn = '(event max)'; }
+    }
+  } else if (type === 'tl') {
+    if (pd.removed) { cantPitch = true; pitchWarn = '(removed)'; }
+    else {
+      const limit = state.currentTournMeta ? state.currentTournMeta.inningLimit : 6;
+      const total = getTournEventInnings(playerId);
+      if (total >= limit) { cantPitch = true; pitchWarn = '(' + limit + ' inn max)'; }
+    }
+  }
+
+  const cantCatch = count >= 41 || (ci >= 3 && count > 0);
+
+  const inningData = state.innings[state.currentInning - 1] || {};
+  const taken = {};
+  state.roster.forEach(p => {
+    if (p.id !== playerId && inningData[p.id] && inningData[p.id] !== 'SIT') taken[inningData[p.id]] = p.name;
+  });
+
+  let html = '';
+  POSITIONS.forEach(pos => {
+    let disabled = false, warn = '';
+    if (pos === 'P' && cantPitch) { disabled = true; warn = pitchWarn; }
+    if (pos === 'C' && cantCatch) { disabled = true; warn = '(conflict)'; }
+    if (taken[pos] && !disabled) { disabled = true; warn = taken[pos]; }
+    const sel = currentPos === pos;
+    html += '<button class="pos-pick-btn ' + (sel ? 'selected-pick' : '') + '" onclick="setPosition(\'' + pos + '\')"' +
+      (disabled ? ' disabled style="opacity:0.3;cursor:not-allowed;"' : '') + '>' +
+      pos + (warn ? '<br><span style="font-size:9px;color:var(--red)">' + warn + '</span>' : '') + '</button>';
+  });
+
+  let cantSit = false, sitWarn = '';
+  if (type === 'cup') {
+    const hasSat = state.innings.some((inn, i) => i !== state.currentInning - 1 && inn[playerId] === 'SIT');
+    const allOthersSat = state.roster.filter(p => p.id !== playerId).every(p2 =>
+      state.innings.some((inn, i) => i !== state.currentInning - 1 && inn[p2.id] === 'SIT')
+    );
+    if (hasSat && !allOthersSat) { cantSit = true; sitWarn = 'Others must sit first'; }
+  }
+
+  html += '<button class="pos-pick-btn sitting-pick ' + (currentPos === 'SIT' ? 'selected-pick' : '') + '" onclick="setPosition(\'SIT\')"' +
+    (cantSit ? ' disabled style="opacity:0.35;cursor:not-allowed;"' : '') + '>SIT' +
+    (cantSit ? '<br><span style="font-size:9px">' + sitWarn + '</span>' : '') + '</button>';
+  html += '<button class="pos-pick-btn" onclick="setPosition(null)" style="color:var(--gray);">CLEAR</button>';
+
+  const grid = document.getElementById('posGrid');
+  if (grid) grid.innerHTML = html;
+  const modal = document.getElementById('posModal');
+  if (modal) modal.classList.remove('hidden');
+}
+
+function setPosition(pos) {
+  const playerId = modalPlayerId;
+  if (pos === 'P' && state.pitches[playerId] && state.pitches[playerId].removed) {
+    alert('This pitcher was already removed this game!'); closeModal(); return;
+  }
+  state.innings[state.currentInning - 1][playerId] = pos;
+  let ci = 0;
+  state.innings.forEach(inn => { if (inn[playerId] === 'C') ci++; });
+  if (!state.pitches[playerId]) state.pitches[playerId] = { count:0, removed:false, catcherInnings:0, outs:0, innings:0 };
+  state.pitches[playerId].catcherInnings = ci;
+  let ip = 0;
+  state.innings.forEach(inn => { if (inn[playerId] && inn[playerId] !== 'SIT') ip++; });
+  state.pitches[playerId].innings = ip;
+  save(); closeModal(); renderLineup(); renderPitching();
+}
+
+function closeModal() {
+  const modal = document.getElementById('posModal');
+  if (modal) modal.classList.add('hidden');
+  modalPlayerId = null;
+}
+
+// ========================
+// AT BATS
+// ========================
+function adjustAB(playerId, delta) {
+  state.atBats[playerId] = Math.max(0, (state.atBats[playerId] || 0) + delta);
+  save(); renderLineup();
+}
+
+// ========================
+// TOURNAMENT HELPERS
+// ========================
+function getTournEventPitches(playerId) {
+  if (!state.activeTournament) return state.pitches[playerId] ? (state.pitches[playerId].count || 0) : 0;
+  const t = state.activeTournament.pitcherTotals ? state.activeTournament.pitcherTotals[playerId] : null;
+  const prev = t ? (t.totalPitches || 0) : 0;
+  const cur = state.pitches[playerId] ? (state.pitches[playerId].count || 0) : 0;
+  return prev + cur;
+}
+function getTournEventInnings(playerId) {
+  if (!state.activeTournament) return state.pitches[playerId] ? (state.pitches[playerId].innings || 0) : 0;
+  const t = state.activeTournament.pitcherTotals ? state.activeTournament.pitcherTotals[playerId] : null;
+  const prev = t ? (t.totalInnings || 0) : 0;
+  const cur = state.pitches[playerId] ? (state.pitches[playerId].innings || 0) : 0;
+  return prev + cur;
+}
+function getTournEventOuts(playerId) {
+  if (!state.activeTournament) return state.pitches[playerId] ? (state.pitches[playerId].outs || 0) : 0;
+  const t = state.activeTournament.pitcherTotals ? state.activeTournament.pitcherTotals[playerId] : null;
+  const prev = t ? (t.totalOuts || 0) : 0;
+  const cur = state.pitches[playerId] ? (state.pitches[playerId].outs || 0) : 0;
+  return prev + cur;
+}
+function checkConsecDays(playerId, day) {
+  if (!state.activeTournament) return false;
+  const t = state.activeTournament.pitcherTotals ? state.activeTournament.pitcherTotals[playerId] : null;
+  if (!t) return false;
+  return t.daysPitched.includes(day - 1) && t.daysPitched.includes(day - 2);
+}
+function checkGamesInDay(playerId, day) {
+  if (!state.activeTournament) return false;
+  const t = state.activeTournament.pitcherTotals ? state.activeTournament.pitcherTotals[playerId] : null;
+  if (!t || !t.gamesInDay) return false;
+  return (t.gamesInDay[day] || 0) >= 2;
+}
+
+// ========================
+// PITCHING TAB
+// ========================
+function renderPitching() {
+  const active = state.gameActive;
+  const noPitch = document.getElementById('noPitchGame');
+  const pitchActive = document.getElementById('pitchingActive');
+  if (noPitch) noPitch.style.display = active ? 'none' : 'block';
+  if (pitchActive) pitchActive.style.display = active ? 'block' : 'none';
+  if (!active) return;
+
+  const type = state.gameType;
+  const list = document.getElementById('pitchList');
+  if (!list) return;
+  const limitLbl = document.getElementById('pitchLimitLabel');
+  if (limitLbl) {
+    if (type === 'regular' || type === 'cup') {
+      const lim = state.season === 'early' ? 65 : 85;
+      limitLbl.textContent = (state.season === 'early' ? 'Early' : 'Late') + ' Season · Max ' + lim + 'p';
+    } else {
+      limitLbl.textContent = '';
+    }
+  }
+
+  if (type === 'tl') {
+    const gameNum = state.currentTournMeta ? state.currentTournMeta.gameNum : 1;
+    const limit = tlLimit(gameNum);
+    if (limitLbl) limitLbl.textContent = 'TL · Game ' + gameNum + ' · ' + limit + ' inn limit';
+    const pitchRulesElTl = document.getElementById('pitchRulesBlock');
+    if (pitchRulesElTl) pitchRulesElTl.innerHTML = '';
+
+    list.innerHTML = state.roster.map(p => {
+      const pd = state.pitches[p.id] || { innings:0, removed:false };
+      const gameInn = pd.innings || 0;
+      const tournTotal = getTournEventInnings(p.id);
+      const pct = Math.min(100, tournTotal / limit * 100);
+      const bc = pct >= 100 ? 'var(--red)' : pct >= 80 ? 'var(--amber)' : 'var(--purple)';
+      const eligible = !pd.removed && tournTotal < limit;
+      return '<div class="pitch-row">' +
+        '<div class="pitch-row-top"><div>' +
+        '<div class="pitch-name">' + p.name + (pd.removed ? ' <span class="removed-badge">REMOVED</span>' : '') + '</div>' +
+        '<div class="pitch-label">INNINGS PITCHED THIS GAME</div></div>' +
+        '<div class="pitch-controls">' +
+        '<button class="pitch-btn minus" onclick="adjustInnings(\'' + p.id + '\',-1)"' + (pd.removed?' disabled style="opacity:0.3"':'') + '>-</button>' +
+        '<div class="pitch-count-display" style="color:' + bc + ';" onclick="openPitchModal(\'' + p.id + '\')">' + gameInn + '</div>' +
+        '<button class="pitch-btn plus" onclick="adjustInnings(\'' + p.id + '\',1)"' + (pd.removed?' disabled style="opacity:0.3"':'') + '>+</button>' +
+        '</div></div>' +
+        '<div class="pitch-limit-bar"><div class="pitch-limit-fill" style="width:' + pct + '%;background:' + bc + ';"></div></div>' +
+        '<div class="pitch-meta">' +
+        '<span style="font-size:11px;color:' + bc + ';">' + tournTotal + ' / ' + limit + ' tournament innings</span>' +
+        '<span class="eligibility-badge ' + (eligible?'elig-ok':'elig-no') + '">' + (eligible ? 'ELIGIBLE' : 'LIMIT REACHED') + '</span>' +
+        '</div>' +
+        (!pd.removed && gameInn > 0 ? '<div style="margin-top:8px;"><button class="btn btn-danger btn-sm" onclick="removePitcher(\'' + p.id + '\')">Remove from mound</button></div>' : '') +
+        '</div>';
+    }).join('');
+
+  } else if (type === 'pg') {
+    const dayNum = state.currentTournMeta ? state.currentTournMeta.dayNum : 1;
+    const eventMax = state.currentTournMeta ? state.currentTournMeta.eventPitchMax : PG_EVENT_SHORT;
+    if (limitLbl) limitLbl.textContent = 'PG 10u - ' + eventMax + 'p event max';
+    const pitchRulesEl = document.getElementById('pitchRulesBlock');
+    if (pitchRulesEl) pitchRulesEl.innerHTML = '<div style="background:#0d1e35;border-radius:8px;border:1px solid #1a2a4a;padding:9px 12px;margin:8px 14px 2px;">' + '<div style="font-family:var(--font-display);font-size:10px;font-weight:600;color:var(--blue);letter-spacing:1px;margin-bottom:7px;">PG 10U PITCHING RULES</div>' + '<div style="display:flex;flex-direction:column;gap:5px;">' + '<div style="display:flex;align-items:flex-start;gap:7px;font-size:11px;color:var(--white);"><span style="color:var(--blue);flex-shrink:0;">&#9679;</span><span><span style="color:var(--gold);font-family:var(--font-display);font-weight:600;">Daily limit:</span> 75 pitches <span style="color:var(--gray);">OR</span> 18 outs &mdash; whichever comes first</span></div>' + '<div style="display:flex;align-items:flex-start;gap:7px;font-size:11px;color:var(--white);"><span style="color:var(--amber);flex-shrink:0;">&#9679;</span><span><span style="color:var(--gold);font-family:var(--font-display);font-weight:600;">Rest:</span> 10+ outs in a day requires <span style="color:var(--amber);">2 days rest</span></span></div>' + '<div style="display:flex;align-items:flex-start;gap:7px;font-size:11px;color:var(--white);"><span style="color:var(--red);flex-shrink:0;">&#9679;</span><span><span style="color:var(--gold);font-family:var(--font-display);font-weight:600;">Consecutive days:</span> Cannot pitch <span style="color:var(--red);">3 days in a row</span></span></div>' + '<div style="display:flex;align-items:flex-start;gap:7px;font-size:11px;color:var(--white);"><span style="color:var(--red);flex-shrink:0;">&#9679;</span><span><span style="color:var(--gold);font-family:var(--font-display);font-weight:600;">Same day:</span> Cannot pitch in <span style="color:var(--red);">3 games in one day</span></span></div>' + '</div></div>';
+
+    list.innerHTML = state.roster.map(p => {
+      const pd = state.pitches[p.id] || { count:0, outs:0, removed:false };
+      const count = pd.count || 0;
+      const outs = pd.outs || 0;
+      const eventPitches = getTournEventPitches(p.id);
+      const eventOuts = getTournEventOuts(p.id);
+      const dpPct = Math.min(100, count / PG_DAILY_PITCH * 100);
+      const epPct = Math.min(100, eventPitches / eventMax * 100);
+      const doPct = Math.min(100, outs / PG_DAILY_OUTS * 100);
+      const pitchColor = dpPct >= 90 ? 'var(--red)' : dpPct >= 70 ? 'var(--amber)' : 'var(--blue)';
+      const eventColor = epPct >= 90 ? 'var(--red)' : epPct >= 70 ? 'var(--amber)' : 'var(--green)';
+      const outColor = doPct >= 90 ? 'var(--red)' : doPct >= 70 ? 'var(--amber)' : 'var(--blue)';
+      const eligible = !pd.removed && count < PG_DAILY_PITCH && outs < PG_DAILY_OUTS && eventPitches < eventMax;
+      const warnings = [];
+      const t = state.activeTournament && state.activeTournament.pitcherTotals ? state.activeTournament.pitcherTotals[p.id] : null;
+      if (getLastGameOuts(p.id) > PG_REST_OUTS) warnings.push('2-day rest required (prev game 10+ outs)');
+      if (checkConsecDays(p.id, dayNum)) warnings.push('Check: 3 consecutive days rule');
+      if (checkGamesInDay(p.id, dayNum)) warnings.push('Already pitched 2 games today');
+
+      return '<div class="pitch-row">' +
+        '<div class="pitch-row-top"><div>' +
+        '<div class="pitch-name">' + p.name + (pd.removed ? ' <span class="removed-badge">REMOVED</span>' : '') + '</div>' +
+        '<span class="eligibility-badge ' + (eligible?'elig-ok':'elig-no') + '" style="margin-top:4px;display:inline-block;">' + (eligible ? 'ELIGIBLE' : 'AT LIMIT') + '</span>' +
+        '</div>' +
+        '<div class="pitch-controls">' +
+        '<button class="pitch-btn minus" onclick="adjustPitch(\'' + p.id + '\',-1)"' + (pd.removed?' disabled style="opacity:0.3"':'') + '>-</button>' +
+        '<div class="pitch-count-display" style="color:' + pitchColor + ';" onclick="openPitchModal(\'' + p.id + '\')">' + count + '</div>' +
+        '<button class="pitch-btn plus" onclick="adjustPitch(\'' + p.id + '\',1)"' + (pd.removed?' disabled style="opacity:0.3"':'') + '>+</button>' +
+        '</div></div>' +
+        '<div class="pitch-label">DAILY PITCHES</div>' +
+        '<div class="pitch-limit-bar"><div class="pitch-limit-fill" style="width:' + dpPct + '%;background:' + pitchColor + ';"></div></div>' +
+        '<div style="display:flex;gap:12px;margin-top:3px;"><span style="font-size:11px;color:' + pitchColor + ';">' + count + '/' + PG_DAILY_PITCH + ' daily</span>' +
+        '<span style="font-size:11px;color:' + eventColor + ';">' + eventPitches + '/' + eventMax + ' event</span></div>' +
+        '<div class="pitch-label" style="margin-top:6px;">EVENT PITCH TOTAL</div>' +
+        '<div class="pitch-limit-bar secondary"><div class="pitch-limit-fill" style="width:' + epPct + '%;background:' + eventColor + ';"></div></div>' +
+        '<div class="pitch-label" style="margin-top:6px;">DAILY OUTS &mdash; ' +
+        '<span style="color:' + outColor + ';">' + outs + '/' + PG_DAILY_OUTS + '</span></div>' +
+        '<div class="pitch-limit-bar secondary"><div class="pitch-limit-fill" style="width:' + doPct + '%;background:' + outColor + ';"></div></div>' +
+        '<div style="display:flex;gap:6px;margin-top:6px;align-items:center;">' +
+        '<button class="pitch-btn minus" style="width:28px;height:28px;font-size:14px;" onclick="adjustOuts(\'' + p.id + '\',-1)"' + (pd.removed?' disabled style="opacity:0.3"':'') + '>-</button>' +
+        '<span style="font-size:11px;font-family:var(--font-display);color:var(--gray);">OUTS</span>' +
+        '<button class="pitch-btn plus" style="width:28px;height:28px;font-size:14px;" onclick="adjustOuts(\'' + p.id + '\',1)"' + (pd.removed?' disabled style="opacity:0.3"':'') + '>+</button>' +
+        '</div>' +
+        warnings.map(w => '<div style="font-size:11px;color:var(--amber);margin-top:4px;">&#9888; ' + w + '</div>').join('') +
+        (!pd.removed && count > 0 ? '<div style="margin-top:8px;"><button class="btn btn-danger btn-sm" onclick="removePitcher(\'' + p.id + '\')">Remove from mound</button></div>' : '') +
+        '</div>';
+    }).join('');
+
+  } else {
+    // Regular / Cup
+    const pitchLimit = state.season === 'early' ? 65 : 85;
+    const pitchRulesElReg = document.getElementById('pitchRulesBlock');
+    if (pitchRulesElReg) pitchRulesElReg.innerHTML = '';
+
+    list.innerHTML = state.roster.map(p => {
+      const pd = state.pitches[p.id] || { count:0, removed:false, catcherInnings:0 };
+      const count = pd.count || 0;
+      const pct = Math.min(100, count / pitchLimit * 100);
+      const bc = pct >= 90 ? 'var(--red)' : pct >= 70 ? 'var(--amber)' : 'var(--green)';
+      let restDays = 0, restColor = 'var(--gray)';
+      if (count >= 66) { restDays=4; restColor='var(--red)'; }
+      else if (count >= 51) { restDays=3; restColor='var(--red)'; }
+      else if (count >= 36) { restDays=2; restColor='var(--amber)'; }
+      else if (count >= 21) { restDays=1; restColor='var(--amber)'; }
+      const ci = pd.catcherInnings || 0;
+      let conflict = '';
+      if (count >= 41) conflict = 'Cannot catch';
+      else if (ci >= 4) conflict = 'Cannot pitch';
+      else if (ci >= 3 && count > 0) conflict = 'Max 40 pitches';
+      return '<div class="pitch-row">' +
+        '<div class="pitch-row-top"><div><div class="pitch-name">' + p.name + (pd.removed ? ' <span class="removed-badge">REMOVED</span>' : '') + '</div></div>' +
+        '<div class="pitch-controls">' +
+        '<button class="pitch-btn minus" onclick="adjustPitch(\'' + p.id + '\',-1)"' + (pd.removed?' disabled style="opacity:0.3"':'') + '>-</button>' +
+        '<div class="pitch-count-display" style="color:' + bc + ';" onclick="openPitchModal(\'' + p.id + '\')">' + count + '</div>' +
+        '<button class="pitch-btn plus" onclick="adjustPitch(\'' + p.id + '\',1)"' + (pd.removed?' disabled style="opacity:0.3"':'') + '>+</button>' +
+        '</div></div>' +
+        '<div class="pitch-limit-bar"><div class="pitch-limit-fill" style="width:' + pct + '%;background:' + bc + ';"></div></div>' +
+        '<div class="pitch-meta">' +
+        '<span class="pitch-status" style="color:' + restColor + ';">' + (restDays > 0 ? restDays + 'd rest reqd' : count > 0 ? 'No rest reqd' : 'No pitches yet') + '</span>' +
+        '<span style="font-size:11px;color:var(--gray);">' + count + '/' + pitchLimit + '</span>' +
+        (conflict ? '<span style="font-size:11px;color:var(--amber);">&#9888; ' + conflict + '</span>' : '') +
+        '</div>' +
+        (!pd.removed && count > 0 ? '<div style="margin-top:8px;"><button class="btn btn-danger btn-sm" onclick="removePitcher(\'' + p.id + '\')">Remove from mound</button></div>' : '') +
+        '</div>';
+    }).join('');
+  }
+}
+
+function adjustPitch(playerId, delta) {
+  if (!state.pitches[playerId]) state.pitches[playerId] = { count:0, removed:false, catcherInnings:0, outs:0, innings:0 };
+  if (state.pitches[playerId].removed) return;
+  state.pitches[playerId].count = Math.max(0, (state.pitches[playerId].count || 0) + delta);
+  const type = state.gameType;
+  const count = state.pitches[playerId].count;
+  const name = (state.roster.find(p => p.id === playerId) || {}).name || '';
+  if (type === 'pg') {
+    if (count === PG_DAILY_PITCH + 1) setTimeout(() => alert(name + ' reached ' + PG_DAILY_PITCH + '-pitch daily limit.'), 10);
+    const ev = getTournEventPitches(playerId);
+    const emax = state.currentTournMeta ? state.currentTournMeta.eventPitchMax : PG_EVENT_SHORT;
+    if (ev >= emax && delta > 0) setTimeout(() => alert(name + ' reached ' + emax + '-pitch event limit.'), 10);
+  } else {
+    const lim = state.season === 'early' ? 65 : 85;
+    if (count === lim + 1) setTimeout(() => alert(name + ' exceeded ' + lim + '-pitch limit.'), 10);
+  }
+  save(); renderPitching();
+}
+
+function adjustOuts(playerId, delta) {
+  if (!state.pitches[playerId]) state.pitches[playerId] = { count:0, removed:false, outs:0, innings:0 };
+  if (state.pitches[playerId].removed) return;
+  const newOuts = Math.max(0, (state.pitches[playerId].outs || 0) + delta);
+  state.pitches[playerId].outs = newOuts;
+  const name = (state.roster.find(p => p.id === playerId) || {}).name || '';
+  const prevOuts = newOuts - delta;
+  if (newOuts === PG_DAILY_OUTS && delta > 0) setTimeout(() => alert(name + ' reached ' + PG_DAILY_OUTS + '-out daily limit!'), 10);
+  else if (newOuts === PG_REST_OUTS + 1 && prevOuts <= PG_REST_OUTS && delta > 0) setTimeout(() => alert(name + ' has 10+ outs - 2 days rest required after this game.'), 10);
+  save(); renderPitching();
+}
+
+function adjustInnings(playerId, delta) {
+  if (!state.pitches[playerId]) state.pitches[playerId] = { count:0, removed:false, innings:0 };
+  if (state.pitches[playerId].removed) return;
+  state.pitches[playerId].innings = Math.max(0, (state.pitches[playerId].innings || 0) + delta);
+  const limit = state.currentTournMeta ? state.currentTournMeta.inningLimit : 6;
+  const total = getTournEventInnings(playerId);
+  const name = (state.roster.find(p => p.id === playerId) || {}).name || '';
+  if (total >= limit && delta > 0) setTimeout(() => alert(name + ' reached the ' + limit + '-inning tournament limit!'), 10);
+  save(); renderPitching();
+}
+
+function removePitcher(playerId) {
+  const name = (state.roster.find(p => p.id === playerId) || {}).name || 'this pitcher';
+  if (!confirm('Remove ' + name + ' from the mound? Cannot return as pitcher this game.')) return;
+  state.pitches[playerId].removed = true;
+  save(); renderPitching();
+}
+
+let pitchModalId = null, pitchModalMode = 'pitch';
+function openPitchModal(playerId) {
+  pitchModalId = playerId;
+  const name = ((state.roster.find(p => p.id === playerId) || {}).name || '').toUpperCase();
+  const type = state.gameType;
+  pitchModalMode = type === 'tl' ? 'innings' : 'pitch';
+  const val = type === 'tl' ? ((state.pitches[playerId] || {}).innings || 0) : ((state.pitches[playerId] || {}).count || 0);
+  const t = document.getElementById('pitchModalTitle');
+  const s = document.getElementById('pitchModalSubtitle');
+  const h = document.getElementById('pitchModalHint');
+  const inp = document.getElementById('pitchNumberInput');
+  if (t) t.textContent = name;
+  if (s) s.textContent = type === 'tl' ? 'INNINGS PITCHED THIS GAME' : 'PITCH COUNT THIS GAME';
+  if (inp) inp.value = val;
+  if (h) {
+    if (type === 'tl') {
+      const limit = state.currentTournMeta ? state.currentTournMeta.inningLimit : 6;
+      h.textContent = 'Tournament total: ' + getTournEventInnings(playerId) + ' / ' + limit + ' innings';
+    } else { h.textContent = ''; }
+  }
+  const modal = document.getElementById('pitchModal');
+  if (modal) modal.classList.remove('hidden');
+  setTimeout(() => { if (inp) inp.select(); }, 50);
+}
+function closePitchModal() {
+  const modal = document.getElementById('pitchModal');
+  if (modal) modal.classList.add('hidden');
+  pitchModalId = null;
+}
+function confirmPitchEntry() {
+  const inp = document.getElementById('pitchNumberInput');
+  const val = parseInt(inp ? inp.value : '0', 10);
+  if (isNaN(val) || val < 0) { alert('Enter a valid number'); return; }
+  if (!state.pitches[pitchModalId]) state.pitches[pitchModalId] = { count:0, removed:false, catcherInnings:0, outs:0, innings:0 };
+  if (pitchModalMode === 'innings') state.pitches[pitchModalId].innings = val;
+  else state.pitches[pitchModalId].count = val;
+  save(); closePitchModal(); renderPitching();
+}
+
+// ========================
+// TOURNAMENT TAB
+// ========================
+function getLastGameOuts(playerId) {
+  // Returns the outs recorded by a pitcher in their most recent completed game
+  if (!state.activeTournament || !state.activeTournament.games.length) return 0;
+  const games = state.activeTournament.games;
+  // Walk backwards to find last game where this player pitched
+  for (let i = games.length - 1; i >= 0; i--) {
+    const pd = (games[i].pitches || {})[playerId] || {};
+    if ((pd.outs || 0) > 0 || (pd.count || 0) > 0) return pd.outs || 0;
+  }
+  return 0;
+}
+
+function renderTournament() {
+  // Also treat an active PG/TL game as having a tournament even if activeTournament
+  // got wiped by a stale Firebase sync — rebuild a minimal one on the fly
+  if (state.gameActive && (state.gameType === 'pg' || state.gameType === 'tl') && !state.activeTournament) {
+    const meta = state.currentTournMeta || {};
+    state.activeTournament = {
+      id: 'live-' + Date.now(),
+      name: meta.tournName || (state.gameType === 'pg' ? 'Perfect Game Tournament' : 'Training Legends Tournament'),
+      type: state.gameType,
+      eventLen: meta.eventLen || 3,
+      eventPitchMax: meta.eventPitchMax || 100,
+      games: [],
+      pitcherTotals: {}
+    };
+  }
+  const hasActive = !!state.activeTournament;
+  const noTourn = document.getElementById('noTournState');
+  const tournActive = document.getElementById('tournActive');
+  if (noTourn) noTourn.style.display = hasActive ? 'none' : 'block';
+  if (tournActive) tournActive.style.display = hasActive ? 'block' : 'none';
+
+  if (hasActive) {
+    const t = state.activeTournament;
+    const hdr = document.getElementById('tournHeader');
+    if (hdr) hdr.textContent = t.name;
+    const meta = document.getElementById('tournMeta');
+    if (meta) {
+      const gc = t.games.length;
+      if (t.type === 'pg') {
+        meta.innerHTML =
+          '<div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px;">' +
+            '<span style="font-size:11px;color:var(--gray);">' + t.eventLen + '-day event</span>' +
+            '<span style="color:var(--gray-dark);">·</span>' +
+            '<span style="font-size:11px;color:var(--blue);">' + t.eventPitchMax + 'p event max</span>' +
+            '<span style="color:var(--gray-dark);">·</span>' +
+            '<span style="font-size:11px;color:var(--gray);">' + gc + ' game' + (gc !== 1 ? 's' : '') + ' played</span>' +
+          '</div>' +
+          '<div style="background:#0d1e35;border-radius:8px;border:1px solid #1a2a4a;padding:9px 12px;">' +
+            '<div style="font-family:var(--font-display);font-size:10px;font-weight:600;color:var(--blue);letter-spacing:1px;margin-bottom:7px;">PG 10U PITCHING RULES</div>' +
+            '<div style="display:flex;flex-direction:column;gap:5px;">' +
+              '<div style="display:flex;align-items:flex-start;gap:7px;font-size:11px;color:var(--white);">' +
+                '<span style="color:var(--blue);flex-shrink:0;">&#9679;</span>' +
+                '<span><span style="color:var(--gold);font-family:var(--font-display);font-weight:600;">Daily limit:</span> 75 pitches <span style="color:var(--gray);">OR</span> 18 outs &mdash; whichever comes first</span>' +
+              '</div>' +
+              '<div style="display:flex;align-items:flex-start;gap:7px;font-size:11px;color:var(--white);">' +
+                '<span style="color:var(--amber);flex-shrink:0;">&#9679;</span>' +
+                '<span><span style="color:var(--gold);font-family:var(--font-display);font-weight:600;">Rest:</span> 10+ outs in a day requires <span style="color:var(--amber);">2 days rest</span></span>' +
+              '</div>' +
+              '<div style="display:flex;align-items:flex-start;gap:7px;font-size:11px;color:var(--white);">' +
+                '<span style="color:var(--red);flex-shrink:0;">&#9679;</span>' +
+                '<span><span style="color:var(--gold);font-family:var(--font-display);font-weight:600;">Consecutive days:</span> Cannot pitch <span style="color:var(--red);">3 days in a row</span></span>' +
+              '</div>' +
+              '<div style="display:flex;align-items:flex-start;gap:7px;font-size:11px;color:var(--white);">' +
+                '<span style="color:var(--red);flex-shrink:0;">&#9679;</span>' +
+                '<span><span style="color:var(--gold);font-family:var(--font-display);font-weight:600;">Same day:</span> Cannot pitch in <span style="color:var(--red);">3 games in one day</span></span>' +
+              '</div>' +
+            '</div>' +
+          '</div>';
+      } else {
+        meta.innerHTML = '<span style="font-size:11px;color:var(--gray);">' + gc + ' game' + (gc !== 1 ? 's' : '') + ' played</span>';
+      }
+    }
+
+    const pitcherList = document.getElementById('tournPitcherList');
+    if (pitcherList) {
+      const sortedRoster = state.roster.slice().sort((a, b) => {
+        const totA = (t.pitcherTotals || {})[a.id] || {};
+        const totB = (t.pitcherTotals || {})[b.id] || {};
+        const curA = state.gameActive ? (state.pitches[a.id] || {}) : {};
+        const curB = state.gameActive ? (state.pitches[b.id] || {}) : {};
+        if (t.type === 'tl') {
+          return ((totB.totalInnings||0) + (curB.innings||0)) - ((totA.totalInnings||0) + (curA.innings||0));
+        }
+        return ((totB.totalPitches||0) + (curB.count||0)) - ((totA.totalPitches||0) + (curA.count||0));
+      });
+      pitcherList.innerHTML = sortedRoster.map(p => {
+        const totals = (t.pitcherTotals || {})[p.id] || { totalPitches:0, totalOuts:0, totalInnings:0, daysPitched:[] };
+        const curPD = state.gameActive ? (state.pitches[p.id] || {}) : {};
+        const totalPitches = (totals.totalPitches || 0) + (curPD.count || 0);
+        const totalOuts = (totals.totalOuts || 0) + (curPD.outs || 0);
+        const totalInnings = (totals.totalInnings || 0) + (curPD.innings || 0);
+
+        if (t.type === 'pg') {
+          const emax = t.eventPitchMax || PG_EVENT_SHORT;
+          const pct = Math.min(100, totalPitches / emax * 100);
+          const bc = pct >= 90 ? 'var(--red)' : pct >= 70 ? 'var(--amber)' : 'var(--blue)';
+
+          // Eligibility checks
+          const atEventLimit = totalPitches >= emax;
+          // Check rest requirement: pitcher recorded 9+ outs in any previous game day
+          const lastGameOuts = getLastGameOuts(p.id);
+          const restNeeded = lastGameOuts > PG_REST_OUTS;
+          // Check consecutive days: pitched on both of the two days before next game day
+          const nextDay = state.currentTournMeta ? state.currentTournMeta.dayNum : (t.games.length > 0 ? (t.games[t.games.length-1].dayNum || 1) : 1);
+          const consecDays = (totals.daysPitched || []).includes(nextDay - 1) && (totals.daysPitched || []).includes(nextDay - 2);
+          // Check same-day games
+          const gamesThisDay = ((totals.gamesInDay || {})[nextDay] || 0);
+          const tooManyGamesDay = gamesThisDay >= 2;
+
+          const eligible = !atEventLimit && !restNeeded && !consecDays && !tooManyGamesDay;
+
+          // Build contextual warning chips
+          let warnings = '';
+          if (restNeeded) warnings += '<div style="display:flex;align-items:center;gap:5px;margin-top:4px;">' +
+            '<span style="font-size:10px;background:rgba(243,156,18,0.12);color:var(--amber);border:1px solid #5a3a1a;border-radius:4px;padding:2px 6px;font-family:var(--font-display);font-weight:600;">2-DAY REST</span>' +
+            '<span style="font-size:10px;color:var(--gray);">' + lastGameOuts + ' outs in prev game</span>' +
+            '</div>';
+          if (consecDays) warnings += '<div style="display:flex;align-items:center;gap:5px;margin-top:4px;">' +
+            '<span style="font-size:10px;background:rgba(230,57,70,0.12);color:var(--red);border:1px solid #5a2a2a;border-radius:4px;padding:2px 6px;font-family:var(--font-display);font-weight:600;">3RD CONSEC DAY</span>' +
+            '<span style="font-size:10px;color:var(--gray);">pitched days ' + (nextDay-2) + ', ' + (nextDay-1) + '</span>' +
+            '</div>';
+          if (tooManyGamesDay) warnings += '<div style="display:flex;align-items:center;gap:5px;margin-top:4px;">' +
+            '<span style="font-size:10px;background:rgba(230,57,70,0.12);color:var(--red);border:1px solid #5a2a2a;border-radius:4px;padding:2px 6px;font-family:var(--font-display);font-weight:600;">MAX GAMES/DAY</span>' +
+            '<span style="font-size:10px;color:var(--gray);">' + gamesThisDay + ' games pitched today</span>' +
+            '</div>';
+          if (atEventLimit) warnings += '<div style="display:flex;align-items:center;gap:5px;margin-top:4px;">' +
+            '<span style="font-size:10px;background:rgba(230,57,70,0.12);color:var(--red);border:1px solid #5a2a2a;border-radius:4px;padding:2px 6px;font-family:var(--font-display);font-weight:600;">EVENT LIMIT</span>' +
+            '<span style="font-size:10px;color:var(--gray);">' + totalPitches + '/' + emax + 'p used</span>' +
+            '</div>';
+
+          // Daily stats from current game if active
+          const dailyPitches = curPD.count || 0;
+          const dailyOuts = curPD.outs || 0;
+
+          return '<div class="tourn-player-card">' +
+            '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">' +
+            '<div class="tourn-player-name">' + p.name + '</div>' +
+            '<span class="eligibility-badge ' + (eligible ? 'elig-ok' : 'elig-no') + '">' + (eligible ? '&#10003; ELIGIBLE' : '&#10007; INELIGIBLE') + '</span>' +
+            '</div>' +
+            '<div class="pitch-limit-bar"><div class="pitch-limit-fill" style="width:' + pct + '%;background:' + bc + ';"></div></div>' +
+            '<div style="display:flex;gap:12px;margin-top:5px;flex-wrap:wrap;">' +
+            '<span style="font-size:11px;color:' + bc + ';">Event: ' + totalPitches + '/' + emax + 'p</span>' +
+            '<span style="font-size:11px;color:var(--gray);">Total outs: ' + totalOuts + '</span>' +
+            (state.gameActive && (dailyPitches || dailyOuts) ?
+              '<span style="font-size:11px;color:var(--gold);">Today: ' + dailyPitches + 'p / ' + dailyOuts + ' outs</span>' : '') +
+            '</div>' +
+            warnings +
+            '</div>';
+        } else {
+          const gameNum = state.currentTournMeta ? state.currentTournMeta.gameNum : (t.games.length + 1);
+          const limit = tlLimit(gameNum);
+          const pct = Math.min(100, totalInnings / limit * 100);
+          const bc = pct >= 100 ? 'var(--red)' : pct >= 80 ? 'var(--amber)' : 'var(--purple)';
+          const left = Math.max(0, limit - totalInnings);
+          return '<div class="tourn-player-card">' +
+            '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">' +
+            '<div class="tourn-player-name">' + p.name + '</div>' +
+            '<span class="eligibility-badge ' + (totalInnings < limit ? 'elig-ok' : 'elig-no') + '">' + (totalInnings < limit ? left + ' inn left' : 'LIMIT REACHED') + '</span>' +
+            '</div>' +
+            '<div class="pitch-limit-bar"><div class="pitch-limit-fill" style="width:' + pct + '%;background:' + bc + ';"></div></div>' +
+            '<div style="margin-top:6px;font-size:12px;color:' + bc + ';">Tournament: ' + totalInnings + ' / ' + limit + ' innings</div>' +
+            '</div>';
+        }
+      }).join('');
+    }
+
+    const gameLog = document.getElementById('tournGameLog');
+    if (gameLog) {
+      if (!t.games.length) {
+        gameLog.innerHTML = '<div style="padding:12px;font-size:12px;color:var(--gray);">No completed games yet in this tournament</div>';
+      } else {
+        gameLog.innerHTML = t.games.map(g => {
+          const roster = g.roster || state.roster;
+          // Only include players who actually pitched, sorted by most pitches/innings
+          const pitchedPlayers = roster
+            .map(p => ({ p, pd: (g.pitches || {})[p.id] || {} }))
+            .filter(({ pd }) => t.type === 'tl' ? (pd.innings || 0) > 0 : (pd.count || 0) > 0 || (pd.outs || 0) > 0)
+            .sort((a, b) => t.type === 'tl'
+              ? (b.pd.innings || 0) - (a.pd.innings || 0)
+              : (b.pd.count || 0) - (a.pd.count || 0));
+          const rows = pitchedPlayers.map(({ p, pd }) => {
+            const val = t.type === 'tl' ? (pd.innings || 0) + ' inn' : (pd.count || 0) + 'p / ' + (pd.outs || 0) + ' outs';
+            return '<div class="history-stat-row"><div class="history-stat-name">' + p.name + '</div><div style="font-size:12px;color:var(--gray);">' + val + '</div></div>';
+          }).join('');
+          return '<div style="border-bottom:1px solid var(--navy-light);padding:8px 14px;">' +
+            '<div style="font-family:var(--font-display);font-size:12px;color:var(--gold);margin-bottom:4px;">GAME ' + (g.gameNum || '?') + ' - ' + (g.date || '') + (t.type === 'pg' ? ' - Day ' + (g.dayNum || '?') : '') + '</div>' +
+            (rows || '<div style="font-size:11px;color:var(--gray);">No pitching data</div>') +
+            '</div>';
+        }).join('');
+      }
+    }
+  }
+
+  const pastEl = document.getElementById('pastTournaments');
+  if (pastEl) {
+    if (state.tournaments && state.tournaments.length) {
+      pastEl.innerHTML = '<div class="section-label" style="margin-bottom:6px;">PAST TOURNAMENTS</div>' +
+        state.tournaments.map((t, ti) => {
+          const roster = t.roster || state.roster;
+          const rows = roster.map(p => {
+            const tot = (t.pitcherTotals || {})[p.id];
+            if (!tot || (!tot.totalPitches && !tot.totalInnings)) return '';
+            const val = t.type === 'tl' ? (tot.totalInnings || 0) + ' inn' : (tot.totalPitches || 0) + 'p / ' + (tot.totalOuts || 0) + ' outs';
+            return '<div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid var(--navy-light);font-size:12px;">' +
+              '<span style="font-family:var(--font-display);">' + p.name + '</span><span>' + val + '</span></div>';
+          }).filter(Boolean).join('');
+          return '<div class="history-game-card">' +
+            '<div class="history-game-header">' +
+            '<div><div class="history-game-title">' + t.name + '</div>' +
+            '<div style="font-size:11px;color:var(--gray);margin-top:2px;">' + (t.type === 'pg' ? 'Perfect Game' : 'Training Legends') + ' - ' + t.games.length + ' games</div></div>' +
+            '<button class="btn btn-danger btn-sm" onclick="deleteTournament(' + ti + ')">X</button>' +
+            '</div>' +
+            (rows ? '<div style="padding:8px 14px;">' + rows + '</div>' : '<div style="padding:8px 14px;font-size:12px;color:var(--gray);">No pitching data</div>') +
+            '</div>';
+        }).join('');
+    } else {
+      pastEl.innerHTML = '';
+    }
+  }
+}
+
+function deleteTournament(idx) {
+  if (!confirm('Delete this tournament record?')) return;
+  state.tournaments.splice(idx, 1);
+  save(); renderTournament();
+}
+
+// ========================
+// ROSTER
+// ========================
+function addPlayer() {
+  const nameEl = document.getElementById('newPlayerName');
+  const numEl = document.getElementById('newPlayerNum');
+  const name = nameEl ? nameEl.value.trim() : '';
+  const num = numEl ? numEl.value.trim() : '';
+  if (!name) return;
+  const id = Date.now().toString();
+  state.roster.push({ id, name, number: num || '' });
+  if (!state.battingOrder) state.battingOrder = [];
+  state.battingOrder.push(id);
+  if (nameEl) nameEl.value = '';
+  if (numEl) numEl.value = '';
+  save(); renderRoster();
+}
+function removePlayer(id) {
+  if (!confirm('Remove this player?')) return;
+  state.roster = state.roster.filter(p => p.id !== id);
+  state.battingOrder = (state.battingOrder || []).filter(bid => bid !== id);
+  save(); renderRoster();
+}
+function reorderRoster(from, to) {
+  const moved = state.roster.splice(from, 1)[0];
+  state.roster.splice(to, 0, moved);
+  // Keep battingOrder in sync with roster order
+  state.battingOrder = state.roster.map(p => p.id);
+  save(); renderRoster();
+}
+
+let rosterDragSrcIdx = null, rosterTouchDragId = null, rosterTouchRow = null;
+function rosterDragStart(e) {
+  const row = e.currentTarget.closest('[data-ridx]');
+  rosterDragSrcIdx = parseInt(row.dataset.ridx);
+  row.classList.add('dragging');
+  e.dataTransfer.effectAllowed = 'move';
+}
+function rosterDragOver(e) {
+  e.preventDefault();
+  document.querySelectorAll('#rosterList [data-ridx]').forEach(r => r.classList.remove('drag-over'));
+  e.currentTarget.closest('[data-ridx]').classList.add('drag-over');
+}
+function rosterDragLeave(e) { e.currentTarget.closest('[data-ridx]').classList.remove('drag-over'); }
+function rosterDrop(e) {
+  e.preventDefault();
+  const row = e.currentTarget.closest('[data-ridx]');
+  const destIdx = parseInt(row.dataset.ridx);
+  row.classList.remove('drag-over');
+  document.querySelectorAll('#rosterList [data-ridx]').forEach(r => r.classList.remove('dragging'));
+  if (rosterDragSrcIdx === null || rosterDragSrcIdx === destIdx) return;
+  reorderRoster(rosterDragSrcIdx, destIdx);
+  rosterDragSrcIdx = null;
+}
+function rosterTouchStart(e) {
+  const row = e.currentTarget.closest('[data-ridx]');
+  rosterTouchDragId = row.dataset.rid;
+  rosterTouchRow = row;
+  row.style.opacity = '0.5';
+}
+function rosterTouchMove(e) {
+  e.preventDefault();
+  const y = e.touches[0].clientY;
+  document.querySelectorAll('#rosterList [data-ridx]').forEach(r => {
+    r.classList.remove('drag-over');
+    const rect = r.getBoundingClientRect();
+    if (y >= rect.top && y <= rect.bottom && r.dataset.rid !== rosterTouchDragId) r.classList.add('drag-over');
+  });
+}
+function rosterTouchEnd(e) {
+  if (!rosterTouchDragId) return;
+  if (rosterTouchRow) rosterTouchRow.style.opacity = '';
+  let destId = null;
+  document.querySelectorAll('#rosterList [data-ridx]').forEach(r => {
+    if (r.classList.contains('drag-over')) { destId = r.dataset.rid; r.classList.remove('drag-over'); }
+  });
+  if (destId && destId !== rosterTouchDragId) {
+    const fromIdx = state.roster.findIndex(p => p.id === rosterTouchDragId);
+    const toIdx = state.roster.findIndex(p => p.id === destId);
+    if (fromIdx !== -1 && toIdx !== -1) reorderRoster(fromIdx, toIdx);
+  }
+  rosterTouchDragId = null; rosterTouchRow = null;
+}
+
+function renderRoster() {
+  const countEl = document.getElementById('rosterCount');
+  if (countEl) countEl.textContent = state.roster.length + ' players';
+  const list = document.getElementById('rosterList');
+  if (!list) return;
+  if (!state.roster.length) {
+    list.innerHTML = '<div style="padding:18px;text-align:center;color:var(--gray);font-size:13px;">Add players to get started</div>';
+    return;
+  }
+  list.innerHTML = state.roster.map((p, idx) =>
+    '<div class="roster-player-row" data-ridx="' + idx + '" data-rid="' + p.id + '" ' +
+    'ondragover="rosterDragOver(event)" ondrop="rosterDrop(event)" ondragleave="rosterDragLeave(event)">' +
+    '<div draggable="true" ondragstart="rosterDragStart(event)" ' +
+    'ontouchstart="rosterTouchStart(event)" ontouchmove="rosterTouchMove(event)" ontouchend="rosterTouchEnd(event)" ' +
+    'style="touch-action:none;padding:0 8px 0 2px;cursor:grab;">' +
+    '<span class="drag-handle">&#8801;</span></div>' +
+    '<div style="flex:1;">' +
+    '<div class="roster-player-name">' + p.name + '</div>' +
+    (p.number ? '<div class="roster-player-num">#' + p.number + '</div>' : '') +
+    '</div>' +
+    '<button class="btn btn-danger btn-sm" onclick="removePlayer(\'' + p.id + '\')">&#x2715;</button>' +
+    '</div>'
+  ).join('');
+}
+
+
+let historyExpanded = {};
+
+function toggleHistoryCard(gi) {
+  historyExpanded[gi] = !historyExpanded[gi];
+  renderHistory();
+}
+
+function buildPositionBreakdown(game) {
+  const FIELD_POSITIONS = ['P','C','1B','2B','3B','SS','LF','CF','RF'];
+  const roster = game.roster || [];
+  const innings = game.innings || [];
+
+  // Build pos -> { playerId -> count } map
+  const posTotals = {};
+  FIELD_POSITIONS.forEach(pos => { posTotals[pos] = {}; });
+  roster.forEach(p => {
+    innings.forEach(inn => {
+      const pos = inn[p.id];
+      if (pos && pos !== 'SIT') {
+        if (!posTotals[pos]) posTotals[pos] = {};
+        posTotals[pos][p.id] = (posTotals[pos][p.id] || 0) + 1;
+      }
+    });
+  });
+
+  // Build SIT totals
+  const sitTotals = {};
+  roster.forEach(p => {
+    innings.forEach(inn => { if (inn[p.id] === 'SIT') sitTotals[p.id] = (sitTotals[p.id] || 0) + 1; });
+  });
+
+  // Only include positions actually used
+  const usedPositions = FIELD_POSITIONS.filter(pos => Object.keys(posTotals[pos] || {}).length > 0);
+
+  let html = '<div style="padding:8px 10px 10px;border-top:1px solid var(--navy-light);">';
+  html += '<div style="font-family:var(--font-display);font-size:10px;font-weight:600;color:var(--gold);letter-spacing:1px;margin-bottom:8px;">INNINGS BY POSITION</div>';
+
+  usedPositions.forEach(pos => {
+    const totals = posTotals[pos];
+    // Sort players: those with innings desc, then zeros
+    const withInnings = roster.filter(p => totals[p.id] > 0).sort((a,b) => (totals[b.id]||0) - (totals[a.id]||0));
+    const withZero = roster.filter(p => !totals[p.id]);
+    const maxInnings = withInnings.length ? (totals[withInnings[0].id] || 1) : 1;
+
+    html += '<div style="display:flex;align-items:flex-start;gap:6px;margin-bottom:6px;">';
+    // Position badge
+    const isPitch = pos === 'P';
+    const badgeColor = isPitch ? '#9999ff' : 'var(--gold)';
+    html += '<div style="font-family:var(--font-display);font-size:9px;font-weight:700;color:' + badgeColor + ';background:#0d1e35;padding:2px 5px;border-radius:3px;min-width:24px;text-align:center;margin-top:1px;flex-shrink:0;">' + pos + '</div>';
+    // Player chips
+    html += '<div style="display:flex;flex-wrap:wrap;gap:3px;flex:1;">';
+    withInnings.forEach(p => {
+      const n = totals[p.id];
+      const pct = n / maxInnings;
+      const bg = pct >= 0.66 ? 'rgba(46,204,113,0.15)' : 'rgba(245,200,66,0.1)';
+      const col = pct >= 0.66 ? 'var(--green)' : 'var(--gold)';
+      html += '<span style="font-size:9px;padding:2px 6px;border-radius:10px;background:' + bg + ';color:' + col + ';white-space:nowrap;">' + p.name.split(' ')[0] + ' ' + n + '</span>';
+    });
+    html += '</div></div>';
+  });
+
+  // SIT row — Option 4: only show players with 2+ bench innings; summarize the rest
+  const satOnce = roster.filter(p => sitTotals[p.id] === 1);
+  const satMore = roster.filter(p => (sitTotals[p.id] || 0) >= 2).sort((a,b) => sitTotals[b.id] - sitTotals[a.id]);
+  const satNone = roster.filter(p => !sitTotals[p.id]);
+
+  html += '<div style="border-top:1px solid #0d1e35;margin-top:4px;padding-top:6px;">';
+  html += '<div style="display:flex;align-items:flex-start;gap:6px;">';
+  html += '<div style="font-family:var(--font-display);font-size:9px;font-weight:700;color:var(--red);background:#0d1e35;padding:2px 5px;border-radius:3px;min-width:24px;text-align:center;margin-top:1px;flex-shrink:0;">SIT</div>';
+  html += '<div style="flex:1;">';
+  // Summary line
+  const parts = [];
+  if (satOnce.length) parts.push(satOnce.length + ' player' + (satOnce.length > 1 ? 's' : '') + ' sat 1 inn');
+  if (satNone.length) parts.push('<span style="color:var(--amber);">' + satNone.length + ' sat 0</span>');
+  if (parts.length) html += '<div style="font-size:9px;color:var(--gray);margin-bottom:3px;">' + parts.join(' · ') + '</div>';
+  // Only show 2+ sitters as chips
+  if (satMore.length) {
+    html += '<div style="display:flex;flex-wrap:wrap;gap:3px;">';
+    satMore.forEach(p => {
+      html += '<span style="font-size:9px;padding:2px 6px;border-radius:10px;background:rgba(230,57,70,0.12);color:var(--red);white-space:nowrap;">' + p.name.split(' ')[0] + ' ' + sitTotals[p.id] + '</span>';
+    });
+    html += '</div>';
+  } else {
+    html += '<div style="font-size:9px;color:var(--green);">&#10003; All sitting looks balanced</div>';
+  }
+  html += '</div></div></div>';
+
+  html += '</div>';
+  return html;
+}
+
+function renderHistory() {
+  const list = document.getElementById('historyList');
+  if (!list) return;
+  if (!state.history || !state.history.length) {
+    list.innerHTML = '<div class="empty-state"><div class="empty-state-icon">&#128202;</div><div class="empty-state-text">No games yet</div></div>';
+    return;
+  }
+  const typeLabel = { regular:'Regular', cup:'Cup Game', pg:'Perfect Game', tl:'Training Legends' };
+  list.innerHTML = state.history.map((game, gi) => {
+    const order = (game.battingOrder && game.battingOrder.length)
+      ? game.battingOrder.map(id => game.roster.find(p => p.id === id)).filter(Boolean)
+      : (game.roster || []);
+    const isExpanded = !!historyExpanded[gi];
+
+    // Build summary stats for header
+    const sitTotals = {};
+    (game.roster || []).forEach(p => {
+      (game.innings || []).forEach(inn => { if (inn[p.id] === 'SIT') sitTotals[p.id] = (sitTotals[p.id] || 0) + 1; });
+    });
+    const totalPlayers = (game.roster || []).length;
+
+    // Pitch summary — only players who actually threw pitches / recorded innings
+    const pitches = game.pitches || {};
+    const pitchers = (game.roster || []).filter(p => {
+      const pd = pitches[p.id] || {};
+      return game.type === 'tl' ? (pd.innings || 0) > 0 : (pd.count || 0) > 0;
+    });
+    let pitchSummary = '';
+    if (game.type === 'tl' && pitchers.length) {
+      pitchSummary = pitchers.map(p => p.name.split(' ')[0] + ': ' + (pitches[p.id].innings || 0) + 'inn').join(', ');
+    } else if (pitchers.length) {
+      pitchSummary = pitchers.map(p => p.name.split(' ')[0] + ': ' + (pitches[p.id].count || 0) + 'p').join(', ');
+    }
+
+    const meta = game.tournMeta
+      ? (typeLabel[game.type] || game.type) + ' · Game ' + game.tournMeta.gameNum
+      : (typeLabel[game.type] || game.type) + (game.season ? ' · ' + (game.season === 'early' ? 'Early' : 'Late') + ' Season' : '');
+
+    const expandedSection = isExpanded ? buildPositionBreakdown(game) : '';
+
+    return '<div class="history-game-card" style="' + (isExpanded ? 'border-color:var(--gold);' : '') + '">' +
+      '<div class="history-game-header" onclick="toggleHistoryCard(' + gi + ')" style="cursor:pointer;user-select:none;">' +
+      '<div style="flex:1;">' +
+      '<div style="display:flex;align-items:center;gap:6px;">' +
+      '<div class="history-game-title">' + game.date + '</div>' +
+      (pitchSummary ? '<div style="font-size:10px;color:var(--gray);">' + pitchSummary + '</div>' : '') +
+      '</div>' +
+      '<div style="font-size:11px;color:var(--gray);margin-top:2px;">' + meta + ' · ' + totalPlayers + ' players</div>' +
+      '</div>' +
+      '<div style="display:flex;align-items:center;gap:6px;">' +
+      '<div style="font-family:var(--font-display);font-size:16px;color:' + (isExpanded ? 'var(--gold)' : 'var(--gray)') + ';transform:rotate(' + (isExpanded ? '90' : '0') + 'deg);display:inline-block;transition:transform 0.15s;">&#8250;</div>' +
+      '<button class="btn btn-danger btn-sm" onclick="event.stopPropagation();deleteHistory(' + gi + ')" style="font-size:11px;padding:4px 8px;">&#x2715;</button>' +
+      '</div>' +
+      '</div>' +
+      expandedSection +
+      '</div>';
+  }).join('');
+}
+function deleteHistory(idx) {
+  if (!confirm('Delete this game record?')) return;
+  state.history.splice(idx, 1);
+  save(); renderHistory();
+}
+
+// ========================
+// INIT
+// ========================
+load();
+// Init the game type selector DOM to 'regular' on fresh load (before any user tap)
+// This prevents a stale Firebase state.gameType from pre-selecting PG/TL
+selectGameType('regular');
+renderAll();
+</script>
+</body>
+</html>
